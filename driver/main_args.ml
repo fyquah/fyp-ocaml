@@ -350,6 +350,10 @@ let mk_o f =
   "-o", Arg.String f, "<file>  Set output file name to <file>"
 ;;
 
+let mk_perf_profile f =
+  "-perf-profile", Arg.String f, "<file>  Set perf profile file to <file>"
+;;
+
 let mk_open f =
   "-open", Arg.String f, "<module>  Opens the module <module> before typing"
 
@@ -815,6 +819,7 @@ module type Compiler_options = sig
   val _linkall : unit -> unit
   val _noautolink : unit -> unit
   val _o : string -> unit
+  val _perf_profile : string -> unit
   val _opaque :  unit -> unit
   val _output_obj : unit -> unit
   val _output_complete_obj : unit -> unit
@@ -1013,6 +1018,7 @@ struct
     mk_nolabels F._nolabels;
     mk_nostdlib F._nostdlib;
     mk_o F._o;
+    mk_perf_profile F._perf_profile;
     mk_opaque F._opaque;
     mk_open F._open;
     mk_output_obj F._output_obj;
@@ -1178,6 +1184,7 @@ struct
     mk_no_unbox_free_vars_of_closures F._no_unbox_free_vars_of_closures;
     mk_no_unbox_specialised_args F._no_unbox_specialised_args;
     mk_o F._o;
+    mk_perf_profile F._perf_profile;
     mk_o2 F._o2;
     mk_o3 F._o3;
     mk_opaque F._opaque;
