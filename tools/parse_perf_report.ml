@@ -27,15 +27,31 @@ type parser_stack =
   | Parsing of string * int * (symbol * loc) list * parser_stack
   | Exhausted of top_level
 
+let rec print_stack ppf (stack : parser_stack) =
+  let fprintf = Format.fprintf in
+  match stack with
+  | Terminal -> fprintf ppf "- Terminal\n"
+  | Transient next -> fprintf ppf "- Transient\n"; print_stack ppf next
+  | Done (_, next) -> fprintf ppf "- Done\n"; print_stack ppf next
+  | Parsing (_, _, occurences, next) ->
+    fprintf ppf "- Parsing (%a)\n"
+      (Format.pp_print_list ~pp_sep:(fun ppf () -> Format.fprintf ppf "; ")
+         (fun ppf (symbol, (filename, line_no)) ->
+            Format.fprintf ppf "[%s %s:%d]" symbol filename line_no))
+      occurences;
+    print_stack ppf next
+  | Exhausted _ -> fprintf ppf "- Exhausted\n"
+;;
+
 let print_top_level ppf (top_level : top_level) =
   let rec loop ~offset (t : t) =
     let print_margin () =
       for _ = 1 to offset do
-        Format.fprintf ppf " ";
+        Format.fprintf ppf "    ";
       done
     in
-    Format.fprintf ppf "%s:\n" t.overhead;
     print_margin ();
+    Format.fprintf ppf "%s:\n" t.overhead;
     List.iter (fun (symbol, (source, line)) ->
         print_margin ();
         Format.fprintf ppf "- %s [%s:%d]\n" symbol source line)
@@ -53,13 +69,12 @@ let parsing_to_done ~descent stack =
       s
     else begin
       match s with
-      | Done (_t, Terminal) ->
-        Exhausted (List.rev children)
+      | Terminal -> Exhausted children
       | Done (t, ros) ->
         let children = t :: children in
         loop i ros ~children
       | Parsing (overhead, _offset, call_stack, ros) ->
-        let children = List.rev children in
+        let children = children in
         let t = { overhead; call_stack; children } in
         loop (i + 1) (Done (t, ros)) ~children:[]
       | _ -> failwith "What the fuck"
@@ -75,7 +90,11 @@ let parse_lines =
       begin match lines with
       | hd :: tl ->
         begin match hd.overhead with
-        | None -> failwith "What the actual fuck"
+        | None ->
+          failwith (
+            Format.sprintf "What the actual fuck %s %s:%d"
+              hd.symbol (fst hd.location) (snd hd.location)
+          )
         | Some overhead ->
           walk tl ~stack:(
             Parsing (overhead, hd.offset, [(hd.symbol, hd.location)], ros))
@@ -100,7 +119,9 @@ let parse_lines =
           walk lines ~stack
         else if hd.offset < acc_offset then
           let descent = (acc_offset - hd.offset) + 1 in
-          parsing_to_done ~descent stack
+          let stack = parsing_to_done ~descent stack in
+          let stack = Transient stack in
+          walk lines ~stack
         else
           failwith "What the fuck"
       | [] -> parsing_to_done ~descent:(10000000) stack
@@ -129,10 +150,19 @@ let rec count_character ~start s c =
     count_character ~start:(start + 1) s c
 ;;
 
-(* finds the start directly after the (possibly hypothetical) pipe
- * charcter *)
-let find_start line =
-  String.rindex line '|' + 1
+let find_start s =
+  try
+    String.rindex s '|' + 1
+  with Not_found ->
+    let rec loop i =
+      if i >= String.length s then
+        raise Not_found
+      else if String.get s i != ' ' then
+        i
+      else
+        loop (i + 1)
+    in
+    loop 0
 ;;
 
 let last_char s =
@@ -169,6 +199,9 @@ let parse_report filename =
                (None, chunks)
            in
            match tl with
+           | loc :: _ :: symbol :: _ when offset = 0 ->
+             let location = parse_loc loc in
+             loop ~acc:({ offset; overhead; symbol; location } :: acc)
            | symbol :: loc :: _ ->
              let location = parse_loc loc in
              loop ~acc:({ offset; overhead; symbol; location } :: acc)
@@ -179,8 +212,10 @@ let parse_report filename =
   in
   match parse_lines (List.rev (loop ~acc:[])) with
   | Exhausted top_level ->
-    Format.printf "%d %a" (List.length top_level) print_top_level top_level
-  | _ -> failwith "Not done?"
+    Format.printf "%a" print_top_level top_level
+  | stack ->
+    Format.printf "Not done? %a" print_stack stack;
+    failwith "FAILED"
 ;;
 
 let arg_list = [ "-output", Arg.Set_string output_ref, " output file" ]
