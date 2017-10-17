@@ -1,5 +1,4 @@
 let output_ref = ref ""
-
 type symbol = string
 
 type loc = (string * int)
@@ -12,17 +11,54 @@ type top_level_entry =
     symbol   : symbol;
   }
 
-type t =
-  | Pending
-  | Filled (overhead * (symbol * loc) list * t) list
+type raw_lines =
+  | Top_Level_line of (overhead * loc)
+  | Line of {
+    offset   : int;
+    overhead : string option;
+    symbol   : string;
+    location : loc;
+  }
 
 type state =
   | Top_level
+  | Init_descent of int
+  | Descent of int
 
 let parse_loc s =
   match String.split_on_char ':' s with
-  | source :: loc -> (source, int_of_string loc)
+  | source :: loc :: [] -> (source, int_of_string loc)
   | _ -> failwith (Format.sprintf "Cannot parse loc string %s" s)
+;;
+
+let rec count_character ~start s c =
+  if start >= String.length s then
+    0
+  else if String.unsafe_get s start = c then
+    1 + count_character ~start:(start + 1) s c
+  else
+    count_character ~start:(start + 1) s c
+;;
+
+let find_start line =
+  (* finds the start directly after the (possibly hypothetical) pipe
+   * charcter *)
+  let start = String.rindex line '|' in
+  if String.get line (start + 1) = ' ' then begin
+    let rec loop i =
+      if String.get line i != ' ' then
+        (i - 1)
+      else
+        loop (i + 1)
+    in
+    loop (start + 1)
+  end else begin
+    start
+  end
+;;
+
+let last_char s =
+  String.unsafe_get s (String.length s - 1)
 ;;
 
 let parse_report filename =
@@ -31,30 +67,36 @@ let parse_report filename =
   end;
   Format.printf "File : %s" filename;
   let ic = open_in filename in
-  let rec loop ~state ~acc =
-    try
+  let rec loop ~acc =
+    try begin
       let line = input_line ic in
       if String.get line 0 = '#' then begin
         loop ~acc
-      end else begin match state with
-      | Top_level ->
-        let segments =
-          List.filter (fun s -> String.length s = 0)
-            (String.split_on_char ' ')
+      end else begin
+        let offset = count_character ~start:0 line '|' in
+        let start = find_start line in
+        let chunks =
+          let length = String.length line - start in
+          String.sub line start length
+          |> String.split_on_char ' '
+          |> List.filter (fun s -> String.length s != 0)
         in
-        begin match segments with
-        | overhead :: loc :: symbol :: _ :: _object :: [] ->
-          let loc = parse_loc loc in
-          let tos = Filled (overhead, [(symbol, loc)], Pending) in
-          loop ~state ~acc:(tos :: acc)
-        | _ -> failwith (Format.sprintf "Parser error at line %s" line)
-        end
+        let hd = List.hd chunks in
+        let overhead, tl =
+          if last_char hd = '%' then
+            (Some hd, List.tl chunks)
+          else
+            (None, chunks)
+        in
+        match tl with
+        | symbol :: loc :: _ ->
+          let location = parse_loc loc in
+          loop ~acc:(Line { offset; overhead; symbol; location } :: acc)
+        | _ -> failwith "What the fuck"
       end
-      Format.printf "-> %s" line;
-      loop ~acc:(line :: acc)
-    with End_of_file -> acc
+    end with End_of_file -> acc
   in
-  ignore (loop ~acc:[])
+  ignore (List.rev (loop ~acc:[]))
 ;;
 
 let arg_list = [ "-output", Arg.Set_string output_ref, " output file" ]
