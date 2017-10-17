@@ -18,11 +18,34 @@ type t =
     children: t list;
   }
 
+type top_level = t list
+
 type parser_stack =
   | Terminal
   | Transient of parser_stack
   | Done of t * parser_stack
   | Parsing of string * int * (symbol * loc) list * parser_stack
+  | Exhausted of top_level
+
+let print_top_level ppf (top_level : top_level) =
+  let rec loop ~offset (t : t) =
+    let print_margin () =
+      for _ = 1 to offset do
+        Format.fprintf ppf " ";
+      done
+    in
+    Format.fprintf ppf "%s:\n" t.overhead;
+    print_margin ();
+    List.iter (fun (symbol, (source, line)) ->
+        print_margin ();
+        Format.fprintf ppf "- %s [%s:%d]\n" symbol source line)
+      t.call_stack;
+    List.iter (fun child -> loop ~offset:(offset + 1) child)
+      t.children
+  in
+  List.iter (fun t -> loop ~offset:0 t; Format.fprintf ppf "\n")
+    top_level
+;;
 
 let parsing_to_done ~descent stack =
   let rec loop i s ~children =
@@ -30,14 +53,15 @@ let parsing_to_done ~descent stack =
       s
     else begin
       match s with
-      | Done (_t, Terminal) -> s
+      | Done (_t, Terminal) ->
+        Exhausted (List.rev children)
       | Done (t, ros) ->
         let children = t :: children in
         loop i ros ~children
       | Parsing (overhead, _offset, call_stack, ros) ->
         let children = List.rev children in
         let t = { overhead; call_stack; children } in
-        loop i (Done (t, ros)) ~children:[]
+        loop (i + 1) (Done (t, ros)) ~children:[]
       | _ -> failwith "What the fuck"
     end
   in
@@ -81,6 +105,7 @@ let parse_lines =
           failwith "What the fuck"
       | [] -> parsing_to_done ~descent:(10000000) stack
       end
+    | Exhausted _
     | Terminal
     | Done _ ->
       failwith "Shouldn't see a terminal or done"
@@ -92,7 +117,7 @@ let parse_lines =
 let parse_loc s =
   match String.split_on_char ':' s with
   | source :: loc :: [] -> (source, int_of_string loc)
-  | _ -> failwith (Format.sprintf "Cannot parse loc string %s" s)
+  | _ -> ("<UNKNOWN>", 0)
 ;;
 
 let rec count_character ~start s c =
@@ -104,21 +129,10 @@ let rec count_character ~start s c =
     count_character ~start:(start + 1) s c
 ;;
 
+(* finds the start directly after the (possibly hypothetical) pipe
+ * charcter *)
 let find_start line =
-  (* finds the start directly after the (possibly hypothetical) pipe
-   * charcter *)
-  let start = String.rindex line '|' in
-  if String.get line (start + 1) = ' ' then begin
-    let rec loop i =
-      if String.get line i != ' ' then
-        (i - 1)
-      else
-        loop (i + 1)
-    in
-    loop (start + 1)
-  end else begin
-    start
-  end
+  String.rindex line '|' + 1
 ;;
 
 let last_char s =
@@ -129,38 +143,44 @@ let parse_report filename =
   if !output_ref = "" then begin
     output_ref := filename ^ ".parsed"
   end;
-  Format.printf "File : %s" filename;
   let ic = open_in filename in
   let rec loop ~acc =
     try begin
       let line = input_line ic in
-      if String.get line 0 = '#' then begin
+      if String.length line = 0 || String.get line 0 = '#' then begin
         loop ~acc
       end else begin
         let offset = count_character ~start:0 line '|' in
-        let start = find_start line in
-        let chunks =
-          let length = String.length line - start in
-          String.sub line start length
-          |> String.split_on_char ' '
-          |> List.filter (fun s -> String.length s != 0)
-        in
-        let hd = List.hd chunks in
-        let overhead, tl =
-          if last_char hd = '%' then
-            (Some hd, List.tl chunks)
-          else
-            (None, chunks)
-        in
-        match tl with
-        | symbol :: loc :: _ ->
-          let location = parse_loc loc in
-          loop ~acc:({ offset; overhead; symbol; location } :: acc)
-        | _ -> failwith "What the fuck"
+        try
+         let start = find_start line in
+         let chunks =
+           let length = String.length line - start in
+           String.sub line start length
+           |> String.split_on_char ' '
+           |> List.filter (fun s -> String.length s != 0)
+         in
+         match chunks with
+         | [] -> loop ~acc
+         | hd :: tl ->
+           let overhead, tl =
+             if last_char hd = '%' then
+               (Some hd, tl)
+             else
+               (None, chunks)
+           in
+           match tl with
+           | symbol :: loc :: _ ->
+             let location = parse_loc loc in
+             loop ~acc:({ offset; overhead; symbol; location } :: acc)
+           | _ -> failwith "What the fuck"
+        with Not_found -> loop ~acc
       end
     end with End_of_file -> acc
   in
-  ignore (parse_lines (List.rev (loop ~acc:[])))
+  match parse_lines (List.rev (loop ~acc:[])) with
+  | Exhausted top_level ->
+    Format.printf "%d %a" (List.length top_level) print_top_level top_level
+  | _ -> failwith "Not done?"
 ;;
 
 let arg_list = [ "-output", Arg.Set_string output_ref, " output file" ]
