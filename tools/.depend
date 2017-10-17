@@ -80,8 +80,8 @@ ocamlprof.cmx : ../utils/warnings.cmx ../parsing/parsetree.cmi \
     ../parsing/parse.cmx ../parsing/location.cmx
 opnames.cmo :
 opnames.cmx :
-parse_perf_report.cmo :
-parse_perf_report.cmx :
+parse_perf_report.cmo : ../middle_end/pgo.cmi
+parse_perf_report.cmx : ../middle_end/pgo.cmx
 primreq.cmo : ../utils/config.cmi ../bytecomp/cmo_format.cmi
 primreq.cmx : ../utils/config.cmx ../bytecomp/cmo_format.cmi
 profiling.cmo : profiling.cmi

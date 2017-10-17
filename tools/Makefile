@@ -330,6 +330,7 @@ $(call byte_and_opt,ocamlobjinfo,$(OBJINFO),objinfo_helper$(EXE))
 PARSE_PERF=../compilerlibs/ocamlcommon.cma \
         ../compilerlibs/ocamlbytecomp.cma \
         ../compilerlibs/ocamlmiddleend.cma \
+	../middle_end/pgo.cmo \
         parse_perf_report.cmo
 
 $(call byte_and_opt,ocamlparseperf,$(PARSE_PERF),)

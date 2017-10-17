@@ -1681,6 +1681,9 @@ middle_end/middle_end.cmi : utils/timings.cmi bytecomp/lambda.cmi \
 middle_end/pass_wrapper.cmo : utils/clflags.cmi middle_end/pass_wrapper.cmi
 middle_end/pass_wrapper.cmx : utils/clflags.cmx middle_end/pass_wrapper.cmi
 middle_end/pass_wrapper.cmi :
+middle_end/pgo.cmo : middle_end/pgo.cmi
+middle_end/pgo.cmx : middle_end/pgo.cmi
+middle_end/pgo.cmi :
 middle_end/projection.cmo : middle_end/base_types/variable.cmi \
     middle_end/base_types/var_within_closure.cmi utils/identifiable.cmi \
     middle_end/base_types/closure_id.cmi middle_end/projection.cmi

@@ -1,9 +1,4 @@
-let output_ref = ref ""
-type symbol = string
-
-type loc = (string * int)
-
-type overhead = string
+open Pgo
 
 type raw_lines =
   { offset   : int;
@@ -12,20 +7,14 @@ type raw_lines =
     location : loc;
   }
 
-type t =
-  { overhead: overhead;
-    call_stack: (symbol * loc) list;
-    children: t list;
-  }
-
-type top_level = t list
-
 type parser_stack =
   | Terminal
   | Transient of parser_stack
   | Done of t * parser_stack
   | Parsing of string * int * (symbol * loc) list * parser_stack
   | Exhausted of top_level
+
+let output_ref = ref ""
 
 let rec print_stack ppf (stack : parser_stack) =
   let fprintf = Format.fprintf in
@@ -212,7 +201,8 @@ let parse_report filename =
   in
   match parse_lines (List.rev (loop ~acc:[])) with
   | Exhausted top_level ->
-    Format.printf "%a" print_top_level top_level
+    let oc = open_out_bin !output_ref in
+    output_value oc top_level
   | stack ->
     Format.printf "Not done? %a" print_stack stack;
     failwith "FAILED"
