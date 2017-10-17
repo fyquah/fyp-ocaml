@@ -35,7 +35,7 @@ DESTDIR ?=
 # a list of installed tools, and a function to quote a filename for
 # the shell.
 override installed_tools := ocamldep ocamlprof ocamlcp ocamloptp \
-                   ocamlmktop ocamlmklib ocamlobjinfo
+                   ocamlmktop ocamlmklib ocamlobjinfo ocamlparseperf
 
 install_files :=
 define byte2native
@@ -326,6 +326,13 @@ OBJINFO=../compilerlibs/ocamlcommon.cma \
         objinfo.cmo
 
 $(call byte_and_opt,ocamlobjinfo,$(OBJINFO),objinfo_helper$(EXE))
+
+PARSE_PERF=../compilerlibs/ocamlcommon.cma \
+        ../compilerlibs/ocamlbytecomp.cma \
+        ../compilerlibs/ocamlmiddleend.cma \
+        parse_perf_report.cmo
+
+$(call byte_and_opt,ocamlparseperf,$(PARSE_PERF),)
 
 install::
 	cp objinfo_helper$(EXE) "$(INSTALL_LIBDIR)/objinfo_helper$(EXE)"
