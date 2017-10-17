@@ -5,25 +5,89 @@ type loc = (string * int)
 
 type overhead = string
 
-type top_level_entry =
-  { overhead : overhead;
-    loc      : loc;
-    symbol   : symbol;
-  }
-
 type raw_lines =
-  | Top_Level_line of (overhead * loc)
-  | Line of {
-    offset   : int;
+  { offset   : int;
     overhead : string option;
     symbol   : string;
     location : loc;
   }
 
-type state =
-  | Top_level
-  | Init_descent of int
-  | Descent of int
+type t =
+  { overhead: overhead;
+    call_stack: (symbol * loc) list;
+    children: t list;
+  }
+
+type parser_stack =
+  | Terminal
+  | Transient of parser_stack
+  | Done of t * parser_stack
+  | Parsing of string * int * (symbol * loc) list * parser_stack
+
+let parsing_to_done ~descent stack =
+  let rec loop i s ~children =
+    if i >= descent then
+      s
+    else begin
+      match s with
+      | Done (_t, Terminal) -> s
+      | Done (t, ros) ->
+        let children = t :: children in
+        loop i ros ~children
+      | Parsing (overhead, _offset, call_stack, ros) ->
+        let children = List.rev children in
+        let t = { overhead; call_stack; children } in
+        loop i (Done (t, ros)) ~children:[]
+      | _ -> failwith "What the fuck"
+    end
+  in
+  loop 0 stack ~children:[]
+;;
+
+let parse_lines =
+  let rec walk ~stack (lines : raw_lines list) =
+    match stack with
+    | Transient ros ->
+      begin match lines with
+      | hd :: tl ->
+        begin match hd.overhead with
+        | None -> failwith "What the actual fuck"
+        | Some overhead ->
+          walk tl ~stack:(
+            Parsing (overhead, hd.offset, [(hd.symbol, hd.location)], ros))
+        end
+      | [] -> failwith "Unexpected"
+      end
+    | Parsing (acc_overhead, acc_offset, acc, ros) ->
+      begin match lines with
+      | hd :: tl ->
+        if hd.offset = acc_offset then
+          begin match hd.overhead with
+          | Some _overhead ->
+            let stack = parsing_to_done ~descent:1 stack in
+            let stack = Transient stack in
+            walk lines ~stack
+          | None ->
+            let acc = (hd.symbol, hd.location) :: acc in
+            walk tl ~stack:(Parsing (acc_overhead, acc_offset, acc, ros))
+          end
+        else if hd.offset > acc_offset then
+          let stack = Transient stack in
+          walk lines ~stack
+        else if hd.offset < acc_offset then
+          let descent = (acc_offset - hd.offset) + 1 in
+          parsing_to_done ~descent stack
+        else
+          failwith "What the fuck"
+      | [] -> parsing_to_done ~descent:(10000000) stack
+      end
+    | Terminal
+    | Done _ ->
+      failwith "Shouldn't see a terminal or done"
+  in
+  fun lines ->
+    walk lines ~stack:(Transient Terminal)
+;;
 
 let parse_loc s =
   match String.split_on_char ':' s with
@@ -91,12 +155,12 @@ let parse_report filename =
         match tl with
         | symbol :: loc :: _ ->
           let location = parse_loc loc in
-          loop ~acc:(Line { offset; overhead; symbol; location } :: acc)
+          loop ~acc:({ offset; overhead; symbol; location } :: acc)
         | _ -> failwith "What the fuck"
       end
     end with End_of_file -> acc
   in
-  ignore (List.rev (loop ~acc:[]))
+  ignore (parse_lines (List.rev (loop ~acc:[])))
 ;;
 
 let arg_list = [ "-output", Arg.Set_string output_ref, " output file" ]
