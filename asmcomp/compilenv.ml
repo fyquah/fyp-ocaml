@@ -452,6 +452,8 @@ let report_error ppf = function
                    @ %s when %s was expected"
         Location.print_filename filename name modname
 
+let (inlining_decisions : (Closure_id.t list * bool) list ref) = ref []
+
 let () =
   Location.register_error_of_exn
     (function

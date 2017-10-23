@@ -1663,7 +1663,8 @@ let run ~never_inline ~backend ~prefixname ~round program =
   assert (Static_exception.Set.is_empty (R.used_static_exceptions r));
   if !Clflags.inlining_report then begin
     let output_prefix = Printf.sprintf "%s.%d" prefixname round in
-    Inlining_stats.save_then_forget_decisions ~output_prefix
+    (* Inlining_stats.save_then_forget_decisions ~output_prefix *)
+    Data_collector.save ~output_prefix
   end;
   Clflags.inlining_report := report;
   result
