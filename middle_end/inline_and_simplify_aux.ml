@@ -21,7 +21,7 @@ module Env = struct
 
   type t = {
     backend : (module Backend_intf.S);
-    call_site_id : int;
+    call_site_offset : Call_site.offset;
     round : int;
     approx : (scope * Simple_value_approx.t) Variable.Map.t;
     approx_mutable : Simple_value_approx.t Mutable_variable.Map.t;
@@ -30,7 +30,7 @@ module Env = struct
     current_functions : Set_of_closures_origin.Set.t;
     (* The functions currently being declared: used to avoid inlining
        recursively *)
-    inlining_stack: Data_collector.call_site list;
+    inlining_stack: Call_site.t list;
     inlining_level : int;
     (* Number of times "inline" has been called recursively *)
     inside_branch : int;
@@ -48,7 +48,7 @@ module Env = struct
 
   let create ~never_inline ~backend ~round =
     { backend;
-      call_site_id = 0;
+      call_site_offset = Call_site.base_offset;
       round;
       approx = Variable.Map.empty;
       approx_mutable = Mutable_variable.Map.empty;
@@ -76,9 +76,9 @@ module Env = struct
   let backend t = t.backend
   let round t = t.round
 
-  let next_call_site_id t =
-    let id = t.call_site_id in
-    (id, { t with call_site_id = id + 1 })
+  let next_call_site_offset t =
+    let offset = t.call_site_offset in
+    (offset, { t with call_site_offset = Call_site.inc offset })
 
   let local env =
     { env with
@@ -355,7 +355,7 @@ module Env = struct
     let inlining_counts =
       Closure_id.Map.add closure_id (inlining_count - 1) t.inlining_counts
     in
-    let tos = { Data_collector. closure_id; location_id; } in
+    let tos = Call_site.create closure_id location_id in
     let inlining_stack = tos :: t.inlining_stack in
     { t with inlining_counts; inlining_stack; }
 
