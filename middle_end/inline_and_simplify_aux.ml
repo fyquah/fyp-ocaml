@@ -29,6 +29,7 @@ module Env = struct
     current_functions : Set_of_closures_origin.Set.t;
     (* The functions currently being declared: used to avoid inlining
        recursively *)
+    inlining_stack: Closure_id.t list;
     inlining_level : int;
     (* Number of times "inline" has been called recursively *)
     inside_branch : int;
@@ -53,6 +54,7 @@ module Env = struct
       projections = Projection.Map.empty;
       current_functions = Set_of_closures_origin.Set.empty;
       inlining_level = 0;
+      inlining_stack = [];
       inside_branch = 0;
       freshening = Freshening.empty;
       never_inline;
@@ -66,6 +68,8 @@ module Env = struct
         Inlining_stats.Closure_stack.create ();
       inlined_debuginfo = Debuginfo.none;
     }
+
+  let inlining_stack t = t.inlining_stack
 
   let backend t = t.backend
   let round t = t.round
@@ -345,7 +349,8 @@ module Env = struct
     let inlining_counts =
       Closure_id.Map.add id (inlining_count - 1) t.inlining_counts
     in
-    { t with inlining_counts }
+    let inlining_stack = id :: t.inlining_stack in
+    { t with inlining_counts; inlining_stack; }
 
   let inlining_level t = t.inlining_level
   let freshening t = t.freshening

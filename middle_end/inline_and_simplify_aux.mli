@@ -35,6 +35,8 @@ module Env : sig
     -> round:int
     -> t
 
+  val inlining_stack : t -> Closure_id.t list
+
   (** Obtain the first-class module that gives information about the
       compiler backend being used for compilation. *)
   val backend : t -> (module Backend_intf.S)

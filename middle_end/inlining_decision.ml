@@ -633,10 +633,22 @@ let for_call_site ~env ~r ~(function_decls : Flambda.function_declarations)
               ~size_from_approximation ~dbg ~simplify ~fun_cost ~self_call
               ~inlining_threshold
           in
+          let call_site_id =
+            closure_id_being_applied :: E.inlining_stack env
+          in
+          let _ = call_site_id in
           match inline_result with
           | Changed (res, inl_reason) ->
+              (*
+            Data_collector.inlining_decisions :=
+              (call_site_id, true) :: !Data_collector.inlining_decisions;
+              *)
             Changed (res, D.Inlined (spec_reason, inl_reason))
           | Original inl_reason ->
+              (*
+            Data_collector.inlining_decisions :=
+              (call_site_id, false) :: !Data_collector.inlining_decisions;
+              *)
             Original (D.Unchanged (spec_reason, inl_reason))
       end
     in
