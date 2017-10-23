@@ -21,6 +21,7 @@ module Env = struct
 
   type t = {
     backend : (module Backend_intf.S);
+    call_site_id : int;
     round : int;
     approx : (scope * Simple_value_approx.t) Variable.Map.t;
     approx_mutable : Simple_value_approx.t Mutable_variable.Map.t;
@@ -29,7 +30,7 @@ module Env = struct
     current_functions : Set_of_closures_origin.Set.t;
     (* The functions currently being declared: used to avoid inlining
        recursively *)
-    inlining_stack: Closure_id.t list;
+    inlining_stack: Data_collector.call_site list;
     inlining_level : int;
     (* Number of times "inline" has been called recursively *)
     inside_branch : int;
@@ -47,6 +48,7 @@ module Env = struct
 
   let create ~never_inline ~backend ~round =
     { backend;
+      call_site_id = 0;
       round;
       approx = Variable.Map.empty;
       approx_mutable = Mutable_variable.Map.empty;
@@ -73,6 +75,10 @@ module Env = struct
 
   let backend t = t.backend
   let round t = t.round
+
+  let next_call_site_id t =
+    let id = t.call_site_id in
+    (id, { t with call_site_id = id + 1 })
 
   let local env =
     { env with
@@ -338,18 +344,19 @@ module Env = struct
     in
     inlining_count > 0
 
-  let inside_inlined_function t id =
+  let inside_inlined_function t closure_id location_id  =
     let inlining_count =
       try
-        Closure_id.Map.find id t.inlining_counts
+        Closure_id.Map.find closure_id t.inlining_counts
       with Not_found ->
         max 1 (Clflags.Int_arg_helper.get
                  ~key:t.round !Clflags.inline_max_unroll)
     in
     let inlining_counts =
-      Closure_id.Map.add id (inlining_count - 1) t.inlining_counts
+      Closure_id.Map.add closure_id (inlining_count - 1) t.inlining_counts
     in
-    let inlining_stack = id :: t.inlining_stack in
+    let tos = { Data_collector. closure_id; location_id; } in
+    let inlining_stack = tos :: t.inlining_stack in
     { t with inlining_counts; inlining_stack; }
 
   let inlining_level t = t.inlining_level

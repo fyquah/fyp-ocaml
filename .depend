@@ -1263,6 +1263,11 @@ middle_end/closure_conversion_aux.cmi : middle_end/base_types/variable.cmi \
     middle_end/base_types/static_exception.cmi \
     middle_end/base_types/mutable_variable.cmi parsing/location.cmi \
     bytecomp/lambda.cmi typing/ident.cmi
+middle_end/data_collector.cmo : middle_end/base_types/closure_id.cmi \
+    middle_end/data_collector.cmi
+middle_end/data_collector.cmx : middle_end/base_types/closure_id.cmx \
+    middle_end/data_collector.cmi
+middle_end/data_collector.cmi : middle_end/base_types/closure_id.cmi
 middle_end/debuginfo.cmo : parsing/location.cmi middle_end/debuginfo.cmi
 middle_end/debuginfo.cmx : parsing/location.cmx middle_end/debuginfo.cmi
 middle_end/debuginfo.cmi : parsing/location.cmi
@@ -1531,7 +1536,7 @@ middle_end/inlining_decision.cmo : middle_end/base_types/variable.cmi \
     middle_end/inlining_transforms.cmi middle_end/inlining_stats_types.cmi \
     middle_end/inlining_cost.cmi middle_end/inline_and_simplify_aux.cmi \
     middle_end/flambda_utils.cmi middle_end/flambda.cmi \
-    middle_end/find_recursive_functions.cmi \
+    middle_end/find_recursive_functions.cmi middle_end/data_collector.cmi \
     middle_end/base_types/closure_id.cmi utils/clflags.cmi \
     middle_end/inlining_decision.cmi
 middle_end/inlining_decision.cmx : middle_end/base_types/variable.cmx \
@@ -1540,7 +1545,7 @@ middle_end/inlining_decision.cmx : middle_end/base_types/variable.cmx \
     middle_end/inlining_transforms.cmx middle_end/inlining_stats_types.cmx \
     middle_end/inlining_cost.cmx middle_end/inline_and_simplify_aux.cmx \
     middle_end/flambda_utils.cmx middle_end/flambda.cmx \
-    middle_end/find_recursive_functions.cmx \
+    middle_end/find_recursive_functions.cmx middle_end/data_collector.cmx \
     middle_end/base_types/closure_id.cmx utils/clflags.cmx \
     middle_end/inlining_decision.cmi
 middle_end/inlining_decision.cmi : middle_end/base_types/variable.cmi \

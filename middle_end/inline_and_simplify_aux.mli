@@ -35,7 +35,9 @@ module Env : sig
     -> round:int
     -> t
 
-  val inlining_stack : t -> Closure_id.t list
+  val next_call_site_id : t -> (int * t)
+
+  val inlining_stack : t -> Data_collector.call_site list
 
   (** Obtain the first-class module that gives information about the
       compiler backend being used for compilation. *)
@@ -206,7 +208,7 @@ module Env : sig
 
   (** Whether the given environment is currently being used to rewrite the
       body of an inlined function. *)
-  val inside_inlined_function : t -> Closure_id.t -> t
+  val inside_inlined_function : t -> Closure_id.t -> int -> t
 
   (** If collecting inlining statistics, record that the inliner is about to
       descend into [closure_id].  This information enables us to produce a
