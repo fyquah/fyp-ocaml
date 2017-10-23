@@ -160,7 +160,7 @@ let last_char s =
 
 let parse_report filename =
   if !output_ref = "" then begin
-    output_ref := filename ^ ".parsed"
+    output_ref := filename ^ ".camlpgo"
   end;
   let ic = open_in filename in
   let rec loop ~acc =
@@ -202,7 +202,8 @@ let parse_report filename =
   match parse_lines (List.rev (loop ~acc:[])) with
   | Exhausted top_level ->
     let oc = open_out_bin !output_ref in
-    output_value oc top_level
+    output_value oc top_level;
+    close_out oc
   | stack ->
     Format.printf "Not done? %a" print_stack stack;
     failwith "FAILED"
