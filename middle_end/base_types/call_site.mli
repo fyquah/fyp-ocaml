@@ -7,6 +7,8 @@ val base_offset : offset
 
 val inc : offset -> offset
 
+val create_top_level : offset -> t
+
 val create : Closure_id.t -> offset -> t
 
 val print_mach : Format.formatter -> t -> unit

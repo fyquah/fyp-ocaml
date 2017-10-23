@@ -27,6 +27,7 @@ module Env = struct
     approx_mutable : Simple_value_approx.t Mutable_variable.Map.t;
     approx_sym : Simple_value_approx.t Symbol.Map.t;
     projections : Variable.t Projection.Map.t;
+    current_function : Closure_id.t option;
     current_functions : Set_of_closures_origin.Set.t;
     (* The functions currently being declared: used to avoid inlining
        recursively *)
@@ -46,7 +47,7 @@ module Env = struct
     inlined_debuginfo : Debuginfo.t;
   }
 
-  let create ~never_inline ~backend ~round =
+  let create ~never_inline ~backend ~round ~current_function =
     { backend;
       call_site_offset = Call_site.base_offset;
       round;
@@ -54,6 +55,7 @@ module Env = struct
       approx_mutable = Mutable_variable.Map.empty;
       approx_sym = Symbol.Map.empty;
       projections = Projection.Map.empty;
+      current_function;
       current_functions = Set_of_closures_origin.Set.empty;
       inlining_level = 0;
       inlining_stack = [];
@@ -232,6 +234,8 @@ module Env = struct
                 (snd (Variable.Map.find id t.approx)))
     with Not_found -> None
 
+  let current_function t = t.current_function
+
   let activate_freshening t =
     { t with freshening = Freshening.activate t.freshening }
 
@@ -344,20 +348,23 @@ module Env = struct
     in
     inlining_count > 0
 
-  let inside_inlined_function t closure_id location_id  =
+  let inside_inlined_function t applied call_site  =
     let inlining_count =
       try
-        Closure_id.Map.find closure_id t.inlining_counts
+        Closure_id.Map.find applied t.inlining_counts
       with Not_found ->
         max 1 (Clflags.Int_arg_helper.get
                  ~key:t.round !Clflags.inline_max_unroll)
     in
     let inlining_counts =
-      Closure_id.Map.add closure_id (inlining_count - 1) t.inlining_counts
+      Closure_id.Map.add applied (inlining_count - 1) t.inlining_counts
     in
-    let tos = Call_site.create closure_id location_id in
-    let inlining_stack = tos :: t.inlining_stack in
-    { t with inlining_counts; inlining_stack; }
+    let inlining_stack = call_site :: t.inlining_stack in
+    let call_site_offset = Call_site.base_offset in
+    { t with current_function = Some applied;
+             inlining_counts;
+             inlining_stack;
+             call_site_offset; }
 
   let inlining_level t = t.inlining_level
   let freshening t = t.freshening
@@ -405,6 +412,7 @@ module Env = struct
       else set_never_inline t
     in
     let t = unset_never_inline_outside_closures t in
+    let t = { t with current_function = Some closure_id } in
     f (note_entering_closure t ~closure_id ~dbg)
 
   let record_decision t decision =

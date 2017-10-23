@@ -1,15 +1,20 @@
 [@@@ocaml.warning "+a-4-9-30-40-41-42"]
 
-type t = { call_stack : Call_site.t list; decision : bool; }
+type t =
+  { call_stack : Call_site.t list;
+    applied : Closure_id.t;
+    decision : bool;
+  }
 
 let (inlining_decisions : t list ref) = ref []
 
 let print_decisions ppf decisions =
   List.iter (fun decision ->
-      let { call_stack; decision } = decision in
+      let { applied; call_stack; decision } = decision in
       List.iter (fun call_site ->
           Format.fprintf ppf "%a," Call_site.print_mach call_site)
         (List.rev call_stack);
+      Format.fprintf ppf "[%a]," Closure_id.print applied;
       if decision then
         Format.fprintf ppf "YES\n"
       else

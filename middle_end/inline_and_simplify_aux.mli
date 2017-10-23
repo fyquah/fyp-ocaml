@@ -33,6 +33,7 @@ module Env : sig
      : never_inline:bool
     -> backend:(module Backend_intf.S)
     -> round:int
+    -> current_function: Closure_id.t option
     -> t
 
   val next_call_site_offset : t -> (Call_site.offset * t)
@@ -132,6 +133,8 @@ module Env : sig
       variables from outer scopes that are not accessible. *)
   val local : t -> t
 
+  val current_function : t -> Closure_id.t option
+
   (** Note that the inliner is descending into a function body from the given
       set of closures.  A set of such descents is maintained. *)
   (* CR-someday mshinwell: consider changing name to remove "declaration".
@@ -208,7 +211,7 @@ module Env : sig
 
   (** Whether the given environment is currently being used to rewrite the
       body of an inlined function. *)
-  val inside_inlined_function : t -> Closure_id.t -> Call_site.offset -> t
+  val inside_inlined_function : t -> Closure_id.t -> Call_site.t -> t
 
   (** If collecting inlining statistics, record that the inliner is about to
       descend into [closure_id].  This information enables us to produce a

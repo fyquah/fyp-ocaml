@@ -33,7 +33,7 @@ type 'b good_idea =
   | Try_it
   | Don't_try_it of 'b
 
-let inline env r ~call_site_offset ~lhs_of_application
+let inline env r ~call_site ~lhs_of_application
     ~(function_decls : Flambda.function_declarations)
     ~closure_id_being_applied ~(function_decl : Flambda.function_declaration)
     ~value_set_of_closures ~only_use_of_function ~original ~recursive
@@ -223,8 +223,7 @@ let inline env r ~call_site_offset ~lhs_of_application
         E.inside_unrolled_function env function_decls.set_of_closures_origin
       in
       let env =
-        E.inside_inlined_function env
-          closure_id_being_applied call_site_offset
+        E.inside_inlined_function env closure_id_being_applied call_site
       in
       let env =
         if E.inlining_level env = 0
@@ -499,6 +498,11 @@ let for_call_site ~env ~r ~(function_decls : Flambda.function_declarations)
       ~args ~args_approxs ~dbg ~simplify ~inline_requested
       ~specialise_requested =
   let (call_site_offset, env) = E.next_call_site_offset env in
+  let call_site =
+    match E.current_function env with
+    | None -> Call_site.create_top_level call_site_offset
+    | Some closure_id -> Call_site.create closure_id call_site_offset
+  in
   if List.length args <> List.length args_approxs then begin
     Misc.fatal_error "Inlining_decision.for_call_site: inconsistent lengths \
         of [args] and [args_approxs]"
@@ -630,29 +634,26 @@ let for_call_site ~env ~r ~(function_decls : Flambda.function_declarations)
                   A.print_value_set_of_closures value_set_of_closures
           in
           let inline_result =
-            inline env r ~call_site_offset ~function_decls ~lhs_of_application
+            inline env r ~call_site ~function_decls ~lhs_of_application
               ~closure_id_being_applied ~function_decl ~value_set_of_closures
               ~only_use_of_function ~original ~recursive
               ~inline_requested ~specialise_requested ~args
               ~size_from_approximation ~dbg ~simplify ~fun_cost ~self_call
               ~inlining_threshold
           in
-          let call_stack =
-            let tos =
-              Call_site.create closure_id_being_applied call_site_offset
-            in
-            tos :: E.inlining_stack env
+          let call_stack = call_site :: E.inlining_stack env in
+          let applied = closure_id_being_applied in
+          let create_datum decision =
+            { Data_collector. applied; call_stack; decision }
           in
           match inline_result with
           | Changed (res, inl_reason) ->
-            let decision = true in
             Data_collector.inlining_decisions :=
-              { Data_collector. call_stack; decision } :: !Data_collector.inlining_decisions;
+              create_datum true :: !Data_collector.inlining_decisions;
             Changed (res, D.Inlined (spec_reason, inl_reason))
           | Original inl_reason ->
-            let decision = false in
             Data_collector.inlining_decisions :=
-              { Data_collector. call_stack; decision } :: !Data_collector.inlining_decisions;
+              create_datum false :: !Data_collector.inlining_decisions;
             Original (D.Unchanged (spec_reason, inl_reason))
       end
     in

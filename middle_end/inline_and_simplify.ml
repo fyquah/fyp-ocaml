@@ -1649,7 +1649,7 @@ let run ~never_inline ~backend ~prefixname ~round program =
   if never_inline then Clflags.inlining_report := false;
   let initial_env =
     add_predef_exns_to_environment
-      ~env:(E.create ~never_inline ~backend ~round)
+      ~env:(E.create ~never_inline ~backend ~round ~current_function:None)
       ~backend
   in
   let result, r = simplify_program initial_env r program in
