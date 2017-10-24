@@ -28,6 +28,8 @@
 
 include Identifiable.S
 
+val of_string : string -> t
+
 val create : ?current_compilation_unit:Compilation_unit.t -> string -> t
 val create_with_same_name_as_ident : Ident.t -> t
 

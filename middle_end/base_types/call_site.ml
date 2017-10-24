@@ -36,3 +36,16 @@ let print_mach ppf = function
       print_closure_id_option at_call_site.closure_id at_call_site.offset
   | Enter_decl closure_id ->
     Format.fprintf ppf "{%a}" Closure_id.print closure_id
+
+let of_string =
+  match String.split_on_char ':' with
+  | closure_id :: offset ->
+    let closure_id =
+      match closure_id with
+      | "TOP_LEVEL" -> None
+      | otherwise ->
+        Some (Closure_id.wrap (Variable.of_string otherwise))
+    in
+    At_call_site { closure_id; offset; }
+  | decl :: [] ->
+    Enter_decl (Closure_id.wrap (Variable.of_string otherwise))

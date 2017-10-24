@@ -9,3 +9,5 @@ type t =
 val inlining_decisions : t list ref
 
 val save : output_prefix: string -> unit
+
+val parse : string -> t
