@@ -103,6 +103,7 @@ module Options = Main_args.Make_optcomp_options (struct
   let _no_unbox_free_vars_of_closures = option "-no-unbox-free-vars-of-closures"
   let _no_unbox_specialised_args = option "-no-unbox-specialised-args"
   let _o s = option_with_arg "-o" s
+  let _inlining_overrides s = option_with_arg "-inlining-overrides" s
   let _perf_profile s = option_with_arg "-perf-profile" s
   let _o2 = option "-O2"
   let _o3 = option "-O3"
