@@ -28,7 +28,8 @@
 
 include Identifiable.S
 
-val of_string : string -> t
+val of_string_mach : string -> t
+val print_mach : Format.formatter -> t -> unit
 
 val create : ?current_compilation_unit:Compilation_unit.t -> string -> t
 val create_with_same_name_as_ident : Ident.t -> t

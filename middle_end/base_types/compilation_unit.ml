@@ -71,3 +71,28 @@ let get_current_exn () =
   | Some current -> current
   | None -> Misc.fatal_error "Compilation_unit.get_current_exn"
 let get_current_id_exn () = get_persistent_ident (get_current_exn ())
+
+(*
+  id : Ident.t;
+  linkage_name : Linkage_name.t;
+  hash : int;
+ * *)
+let print_mach ppf t =
+  let ident = Ident.name t.id in
+  let linkage_name = Linkage_name.to_string t.linkage_name in
+  Format.fprintf ppf "<%s %s>" ident linkage_name
+;;
+
+let of_string_mach s =
+  let len = String.length s in
+  assert (String.get s 0 = '<');
+  assert (String.get s (len - 1) = '>');
+  let substr = String.sub s 1 (len - 2) in
+  match String.split_on_char ' ' substr with
+  | ident :: linkage_name :: [] ->
+    let ident = Ident.create_persistent ident in
+    let linkage_name = Linkage_name.create linkage_name in
+    create ident linkage_name
+  | _ ->
+    Misc.fatal_errorf "Cannot parse %s as a Compilation unit" s
+

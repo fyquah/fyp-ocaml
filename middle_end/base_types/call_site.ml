@@ -27,7 +27,9 @@ let create closure_id offset =
 
 let print_closure_id_option ppf = function
   | None -> Format.fprintf ppf "TOP_LEVEL"
-  | Some closure_id -> Format.fprintf ppf "%a" Closure_id.print closure_id
+  | Some closure_id ->
+    let var = Closure_id.unwrap closure_id in
+    Format.fprintf ppf "%a" Variable.print_mach var
 ;;
 
 let print_mach ppf = function
@@ -35,7 +37,8 @@ let print_mach ppf = function
     Format.fprintf ppf "%a:%d"
       print_closure_id_option at_call_site.closure_id at_call_site.offset
   | Enter_decl closure_id ->
-    Format.fprintf ppf "{%a}" Closure_id.print closure_id
+    let var = Closure_id.unwrap closure_id in
+    Format.fprintf ppf "{%a}" Variable.print_mach var
 
 let of_string s =
   match String.split_on_char ':' s with
@@ -44,10 +47,10 @@ let of_string s =
       match closure_id with
       | "TOP_LEVEL" -> None
       | otherwise ->
-        Some (Closure_id.wrap (Variable.of_string otherwise))
+        Some (Closure_id.wrap (Variable.of_string_mach otherwise))
     in
     let offset = int_of_string offset in
     At_call_site { closure_id; offset; }
   | decl :: [] ->
-    Enter_decl (Closure_id.wrap (Variable.of_string decl))
+    Enter_decl (Closure_id.wrap (Variable.of_string_mach decl))
   | _ -> Misc.fatal_error "[Call_site.of_string] failed"

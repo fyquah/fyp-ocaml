@@ -23,6 +23,26 @@ type t = {
   (** [name_stamp]s are unique within any given compilation unit. *)
 }
 
+let print_mach ppf t =
+  Format.fprintf ppf "(%a %s %d)"
+    Compilation_unit.print_mach t.compilation_unit t.name t.name_stamp
+;;
+
+let of_string_mach s =
+  let len = String.length s in
+  assert (String.get s 0 = '(');
+  assert (String.get s (len - 1) = ')');
+  let substr = String.sub s 1 (len - 2) in
+  match String.split_on_char ' ' substr with
+  | compilation_unit :: name :: name_stamp :: [] ->
+    let name_stamp = int_of_string name_stamp in
+    let compilation_unit =
+      Compilation_unit.of_string_mach compilation_unit
+    in
+    { compilation_unit; name; name_stamp }
+  | _ -> Misc.fatal_errorf "Cannot parse %s as a Variable.t" s
+;;
+
 include Identifiable.Make (struct
   type nonrec t = t
 
@@ -59,6 +79,7 @@ include Identifiable.Make (struct
     end
 end)
 
+(*
 let of_string s =
   match String.split_on_char '/' s with
   | front :: name_stamp :: [] ->
@@ -73,6 +94,7 @@ let of_string s =
     | _ -> Misc.fatal_error "failed"
     end
   | _ -> Misc.fatal_error "Parse error"
+*)
 
 let previous_name_stamp = ref (-1)
 

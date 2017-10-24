@@ -46,7 +46,8 @@ let parse lines =
           assert (String.get applied 0 = '[');
           assert (String.get applied (String.length applied - 1) = ']');
           Closure_id.wrap (
-              Variable.of_string (String.sub applied 1 (String.length applied - 2)))
+              Variable.of_string_mach
+                (String.sub applied 1 (String.length applied - 2)))
         in
         let call_stack =
           match List.rev call_stack with

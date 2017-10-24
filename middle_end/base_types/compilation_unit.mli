@@ -31,3 +31,6 @@ val get_current_exn : unit -> t
 val get_current_id_exn : unit -> Ident.t
 
 val string_for_printing : t -> string
+
+val print_mach : Format.formatter -> t -> unit
+val of_string_mach : string -> t
