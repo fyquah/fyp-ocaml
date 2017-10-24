@@ -211,7 +211,7 @@ module Env : sig
 
   (** Whether the given environment is currently being used to rewrite the
       body of an inlined function. *)
-  val inside_inlined_function : t -> Closure_id.t -> Call_site.t -> t
+  val inside_inlined_function : t -> Closure_id.t -> t
 
   val inside_inlined_stub : t -> Closure_id.t -> Call_site.t -> t
 
@@ -238,7 +238,7 @@ module Env : sig
    (** If collecting inlining statistics, record that the inliner is about to
        descend into an inlined function call.  This requires that the inliner
        has already entered the call with [note_entering_call]. *)
-  val note_entering_inlined : t -> t
+  val note_entering_inlined : t -> Closure_id.t -> Call_site.t -> t
 
    (** If collecting inlining statistics, record that the inliner is about to
        descend into a specialised function definition.  This requires that the

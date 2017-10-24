@@ -216,15 +216,15 @@ let inline env r ~call_site ~lhs_of_application
       let r =
         R.map_benefit r_inlined (Inlining_cost.Benefit.(+) (R.benefit r))
       in
-      let env = E.note_entering_inlined env in
+      let env =
+        E.note_entering_inlined env closure_id_being_applied call_site
+      in
       let env =
         (* We decrement the unrolling count even if the function is not
            recursive to avoid having to check whether or not it is recursive *)
         E.inside_unrolled_function env function_decls.set_of_closures_origin
       in
-      let env =
-        E.inside_inlined_function env closure_id_being_applied call_site
-      in
+      let env = E.inside_inlined_function env closure_id_being_applied in
       let env =
         if E.inlining_level env = 0
            (* If the function was considered for inlining without considering
@@ -259,7 +259,9 @@ let inline env r ~call_site ~lhs_of_application
         Original (S.Not_inlined.Without_subfunctions wsb)
       end else begin
         let env = E.inlining_level_up env in
-        let env = E.note_entering_inlined env in
+        let env =
+          E.note_entering_inlined env closure_id_being_applied call_site
+        in
         let env =
           (* We decrement the unrolling count even if the function is recursive
              to avoid having to check whether or not it is recursive *)
@@ -643,7 +645,7 @@ let for_call_site ~env ~r ~(function_decls : Flambda.function_declarations)
               ~size_from_approximation ~dbg ~simplify ~fun_cost ~self_call
               ~inlining_threshold
           in
-          let call_stack = E.inlining_stack env in
+          let call_stack = call_site :: E.inlining_stack env in
           let applied = closure_id_being_applied in
           let create_datum decision =
             { Data_collector. applied; call_stack; decision }

@@ -348,7 +348,7 @@ module Env = struct
     in
     inlining_count > 0
 
-  let inside_inlined_function t applied call_site  =
+  let inside_inlined_function t applied  =
     let inlining_count =
       try
         Closure_id.Map.find applied t.inlining_counts
@@ -359,16 +359,7 @@ module Env = struct
     let inlining_counts =
       Closure_id.Map.add applied (inlining_count - 1) t.inlining_counts
     in
-    let inlining_stack = call_site :: t.inlining_stack in
-    let call_site_offset = Call_site.base_offset in
-    { t with current_function = Some applied;
-             inlining_counts;
-             inlining_stack;
-             call_site_offset; }
-
-  let inside_inlined_stub t _applied _call_site =
-    let inlining_stack = call_site :: t.inlining_stack in
-    { t with current_function = Some applied; inlining_stack }
+    { t with inlining_counts }
 
   let inlining_level t = t.inlining_level
   let freshening t = t.freshening
@@ -392,14 +383,26 @@ module Env = struct
             t.inlining_stats_closure_stack ~closure_id ~dbg;
       }
 
-  let note_entering_inlined t =
+  let note_entering_inlined t closure_id call_site =
     if t.never_inline then t
     else
+      let inlining_stack = call_site :: t.inlining_stack in
+      let call_site_offset = Call_site.base_offset in
       { t with
         inlining_stats_closure_stack =
           Inlining_stats.Closure_stack.note_entering_inlined
             t.inlining_stats_closure_stack;
+        inlining_stack;
+        call_site_offset;
+        current_function = Some closure_id;
       }
+
+  let inside_inlined_stub t applied call_site =
+    let call_site_offset = Call_site.base_offset in
+    let inlining_stack = call_site :: t.inlining_stack in
+    { t with current_function = Some applied;
+             inlining_stack;
+             call_site_offset; }
 
   let note_entering_specialised t ~closure_ids =
     if t.never_inline then t
