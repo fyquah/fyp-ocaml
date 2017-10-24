@@ -8,6 +8,10 @@ type t =
 
 val inlining_decisions : t list ref
 
+val inlining_overrides : t list ref
+
 val save : output_prefix: string -> unit
 
-val parse : string -> t
+val print_list : Format.formatter -> t list -> unit
+
+val parse : string list -> t list

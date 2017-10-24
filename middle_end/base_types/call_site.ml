@@ -37,15 +37,17 @@ let print_mach ppf = function
   | Enter_decl closure_id ->
     Format.fprintf ppf "{%a}" Closure_id.print closure_id
 
-let of_string =
-  match String.split_on_char ':' with
-  | closure_id :: offset ->
+let of_string s =
+  match String.split_on_char ':' s with
+  | closure_id :: offset :: [] ->
     let closure_id =
       match closure_id with
       | "TOP_LEVEL" -> None
       | otherwise ->
         Some (Closure_id.wrap (Variable.of_string otherwise))
     in
+    let offset = int_of_string offset in
     At_call_site { closure_id; offset; }
   | decl :: [] ->
-    Enter_decl (Closure_id.wrap (Variable.of_string otherwise))
+    Enter_decl (Closure_id.wrap (Variable.of_string decl))
+  | _ -> Misc.fatal_error "[Call_site.of_string] failed"

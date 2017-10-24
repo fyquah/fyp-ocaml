@@ -92,6 +92,27 @@ let implementation ~backend ppf sourcefile outputprefix =
           Clflags.unbox_free_vars_of_closures := false;
           Clflags.unbox_specialised_args := false
         end;
+
+        begin match !Clflags.inlining_overrides with
+        | None -> ()
+        | Some filename ->
+          let lines =
+            let chan = open_in filename in
+            let lines = ref [] in
+            try
+              while true; do
+                lines := input_line chan :: !lines
+              done; !lines
+            with End_of_file ->
+              close_in chan;
+              List.rev !lines
+	  in
+          Data_collector.inlining_overrides := Data_collector.parse lines;
+          Format.printf "Loaded override devisions: %a\n"
+            Data_collector.print_list
+            !Data_collector.inlining_overrides
+        end;
+
         (typedtree, coercion)
         ++ Timings.(time (Timings.Transl sourcefile)
             (Translmod.transl_implementation_flambda modulename))

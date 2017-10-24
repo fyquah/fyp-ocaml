@@ -64,8 +64,8 @@ let of_string s =
   | front :: name_stamp :: [] ->
     let name_stamp = int_of_string name_stamp in
     begin match String.split_on_char '.' front with
-    | compilation_unit :: name :: [] ->
-      let a = Ident.create compilation_unit in
+    | _compilation_unit :: name :: [] ->
+      let compilation_unit = Compilation_unit.get_current_exn () in
       { name ; name_stamp; compilation_unit }
     | name :: [] ->
       let compilation_unit = Compilation_unit.get_current_exn () in
