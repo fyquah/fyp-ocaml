@@ -213,6 +213,8 @@ module Env : sig
       body of an inlined function. *)
   val inside_inlined_function : t -> Closure_id.t -> Call_site.t -> t
 
+  val inside_inlined_stub : t -> Closure_id.t -> Call_site.t -> t
+
   (** If collecting inlining statistics, record that the inliner is about to
       descend into [closure_id].  This information enables us to produce a
       stack of closures that form a kind of context around an inlining

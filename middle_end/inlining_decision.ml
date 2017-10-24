@@ -541,6 +541,8 @@ let for_call_site ~env ~r ~(function_decls : Flambda.function_declarations)
         ~closure_id_being_applied ~specialise_requested ~inline_requested
         ~function_decl ~args ~dbg ~simplify
     in
+    let applied = closure_id_being_applied in
+    let env = E.inside_inlined_stub env applied call_site in
     simplify env r body
   else if E.never_inline env then
     (* This case only occurs when examining the body of a stub function
@@ -641,7 +643,7 @@ let for_call_site ~env ~r ~(function_decls : Flambda.function_declarations)
               ~size_from_approximation ~dbg ~simplify ~fun_cost ~self_call
               ~inlining_threshold
           in
-          let call_stack = call_site :: E.inlining_stack env in
+          let call_stack = E.inlining_stack env in
           let applied = closure_id_being_applied in
           let create_datum decision =
             { Data_collector. applied; call_stack; decision }

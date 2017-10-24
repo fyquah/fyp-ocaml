@@ -366,6 +366,10 @@ module Env = struct
              inlining_stack;
              call_site_offset; }
 
+  let inside_inlined_stub t _applied _call_site =
+    let inlining_stack = call_site :: t.inlining_stack in
+    { t with current_function = Some applied; inlining_stack }
+
   let inlining_level t = t.inlining_level
   let freshening t = t.freshening
   let never_inline t = t.never_inline || t.never_inline_outside_closures
