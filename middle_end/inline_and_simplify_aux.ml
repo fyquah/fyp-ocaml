@@ -412,6 +412,12 @@ module Env = struct
       else set_never_inline t
     in
     let t = unset_never_inline_outside_closures t in
+    let t =
+      let inlining_stack =
+        Call_site.enter_decl closure_id :: t.inlining_stack
+      in
+      { t with inlining_stack }
+    in
     let t = { t with current_function = Some closure_id } in
     f (note_entering_closure t ~closure_id ~dbg)
 
