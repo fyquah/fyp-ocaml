@@ -25,5 +25,5 @@ rule read =
   | newline { next_line lexbuf; read lexbuf }
   | '('     { LEFT_BRACE }
   | ')'     { RIGHT_BRACE }
-  | [^ '(' ')' '\n' '\r' '\t' ' ' ] { STRING (Lexing.lexeme lexbuf) }
+  | [^ '(' ')' '\n' '\r' '\t' ' ' ]+ { STRING (Lexing.lexeme lexbuf) }
   | eof     { EOF }
