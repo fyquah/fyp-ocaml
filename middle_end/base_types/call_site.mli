@@ -18,3 +18,5 @@ val create : Closure_id.t -> offset -> t
 val to_sexp : t -> Sexp.t
 
 val of_sexp : Sexp.t -> t
+
+val pprint : Format.formatter -> t -> unit

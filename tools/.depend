@@ -80,6 +80,12 @@ ocamlprof.cmx : ../utils/warnings.cmx ../parsing/parsetree.cmi \
     ../parsing/parse.cmx ../parsing/location.cmx
 opnames.cmo :
 opnames.cmx :
+opt_decisions.cmo : ../middle_end/data_collector.cmi \
+    ../middle_end/base_types/closure_id.cmi \
+    ../middle_end/base_types/call_site.cmi
+opt_decisions.cmx : ../middle_end/data_collector.cmx \
+    ../middle_end/base_types/closure_id.cmx \
+    ../middle_end/base_types/call_site.cmx
 parse_perf_report.cmo : ../middle_end/pgo.cmi
 parse_perf_report.cmx : ../middle_end/pgo.cmx
 primreq.cmo : ../utils/config.cmi ../bytecomp/cmo_format.cmi

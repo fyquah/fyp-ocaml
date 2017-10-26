@@ -86,3 +86,14 @@ let of_sexp sexp =
   | _ ->
     Misc.fatal_errorf "Cannot parse %a as a Call_site.t"
       Sexp.print_mach sexp
+
+let pprint ppf t =
+  match t with
+  | At_call_site at_call_site ->
+    begin match at_call_site.closure_id with
+    | None -> Format.fprintf ppf "TOP_LEVEL"
+    | Some c -> Format.fprintf ppf "%a" Closure_id.print c
+    end;
+    Format.fprintf ppf ":%d" at_call_site.offset;
+  | Enter_decl closure_id ->
+    Format.fprintf ppf "{%a}" Closure_id.print closure_id

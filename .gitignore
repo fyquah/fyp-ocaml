@@ -367,6 +367,7 @@
 /tools/stripdebug.opt
 /tools/make_opcodes
 /tools/make_opcodes.ml
+/tools/ocamloptdecisions
 
 /utils/config.ml
 

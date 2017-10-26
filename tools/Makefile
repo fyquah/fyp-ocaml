@@ -35,7 +35,8 @@ DESTDIR ?=
 # a list of installed tools, and a function to quote a filename for
 # the shell.
 override installed_tools := ocamldep ocamlprof ocamlcp ocamloptp \
-                   ocamlmktop ocamlmklib ocamlobjinfo ocamlparseperf
+                   ocamlmktop ocamlmklib ocamlobjinfo ocamlparseperf \
+		   ocamloptdecisions
 
 install_files :=
 define byte2native
@@ -95,7 +96,7 @@ endif
 CAMLLEX=$(CAMLRUN) ../boot/ocamllex
 INCLUDES=-I ../utils -I ../parsing -I ../typing -I ../bytecomp -I ../asmcomp \
          -I ../middle_end -I ../middle_end/base_types -I ../driver \
-         -I ../toplevel
+         -I ../toplevel -I ../sexp
 COMPFLAGS= -absname -w +a-4-9-41-42-44-45-48 -strict-sequence -warn-error A \
  -safe-string -strict-formats -bin-annot $(INCLUDES)
 LINKFLAGS=$(INCLUDES)
@@ -333,7 +334,14 @@ PARSE_PERF=../compilerlibs/ocamlcommon.cma \
 	../middle_end/pgo.cmo \
         parse_perf_report.cmo
 
+OPT_DECISIONS=../compilerlibs/ocamlcommon.cma \
+        ../compilerlibs/ocamlbytecomp.cma \
+        ../compilerlibs/ocamlmiddleend.cma \
+        opt_decisions.cmo
+
 $(call byte_and_opt,ocamlparseperf,$(PARSE_PERF),)
+
+$(call byte_and_opt,ocamloptdecisions,$(OPT_DECISIONS),)
 
 install::
 	cp objinfo_helper$(EXE) "$(INSTALL_LIBDIR)/objinfo_helper$(EXE)"

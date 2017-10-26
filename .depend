@@ -1880,11 +1880,11 @@ middle_end/unbox_specialised_args.cmi : middle_end/base_types/variable.cmi \
     middle_end/inlining_cost.cmi middle_end/inline_and_simplify_aux.cmi \
     middle_end/flambda.cmi
 middle_end/base_types/call_site.cmo : middle_end/base_types/variable.cmi \
-    sexp/sexp.cmi utils/misc.cmi middle_end/base_types/closure_id.cmi \
-    middle_end/base_types/call_site.cmi
+    sexp/sexp.cmi utils/misc.cmi utils/helper.cmi \
+    middle_end/base_types/closure_id.cmi middle_end/base_types/call_site.cmi
 middle_end/base_types/call_site.cmx : middle_end/base_types/variable.cmx \
-    sexp/sexp.cmx utils/misc.cmx middle_end/base_types/closure_id.cmx \
-    middle_end/base_types/call_site.cmi
+    sexp/sexp.cmx utils/misc.cmx utils/helper.cmx \
+    middle_end/base_types/closure_id.cmx middle_end/base_types/call_site.cmi
 middle_end/base_types/call_site.cmi : sexp/sexp.cmi \
     middle_end/base_types/closure_id.cmi
 middle_end/base_types/closure_element.cmo : \
