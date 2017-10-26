@@ -835,6 +835,13 @@ partialclean::
 
 beforedepend:: parsing/parser.mli parsing/parser.ml
 
+# Sexp Libraries
+sexp/sexp_lexer.ml: sexp/sexp_lexer.mll
+	$(CAMLLEX) $<
+
+sexp/sexp_parser.ml sexp/sexp_parser.mli: sexp/sexp_parser.mly
+	menhir $<
+
 # The lexer
 
 parsing/lexer.ml: parsing/lexer.mll

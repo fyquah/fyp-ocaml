@@ -1,4 +1,4 @@
-# 1 "sexp_lexer.mll"
+# 1 "sexp/sexp_lexer.mll"
  
 
 open Lexing
@@ -15,7 +15,7 @@ let next_line lexbuf =
 ;;
 
 
-# 19 "sexp_lexer.ml"
+# 19 "sexp/sexp_lexer.ml"
 let __ocaml_lex_tables = {
   Lexing.lex_base =
    "\000\000\250\255\002\000\252\255\253\255\254\255\004\000\007\000\
@@ -115,34 +115,34 @@ let rec read lexbuf =
 and __ocaml_lex_read_rec lexbuf __ocaml_lex_state =
   match Lexing.engine __ocaml_lex_tables __ocaml_lex_state lexbuf with
       | 0 ->
-# 24 "sexp_lexer.mll"
+# 24 "sexp/sexp_lexer.mll"
             ( read lexbuf )
-# 121 "sexp_lexer.ml"
+# 121 "sexp/sexp_lexer.ml"
 
   | 1 ->
-# 25 "sexp_lexer.mll"
+# 25 "sexp/sexp_lexer.mll"
             ( next_line lexbuf; read lexbuf )
-# 126 "sexp_lexer.ml"
+# 126 "sexp/sexp_lexer.ml"
 
   | 2 ->
-# 26 "sexp_lexer.mll"
+# 26 "sexp/sexp_lexer.mll"
             ( LEFT_BRACE )
-# 131 "sexp_lexer.ml"
+# 131 "sexp/sexp_lexer.ml"
 
   | 3 ->
-# 27 "sexp_lexer.mll"
+# 27 "sexp/sexp_lexer.mll"
             ( RIGHT_BRACE )
-# 136 "sexp_lexer.ml"
+# 136 "sexp/sexp_lexer.ml"
 
   | 4 ->
-# 28 "sexp_lexer.mll"
+# 28 "sexp/sexp_lexer.mll"
                                      ( STRING (Lexing.lexeme lexbuf) )
-# 141 "sexp_lexer.ml"
+# 141 "sexp/sexp_lexer.ml"
 
   | 5 ->
-# 29 "sexp_lexer.mll"
+# 29 "sexp/sexp_lexer.mll"
             ( EOF )
-# 146 "sexp_lexer.ml"
+# 146 "sexp/sexp_lexer.ml"
 
   | __ocaml_lex_state -> lexbuf.Lexing.refill_buff lexbuf;
       __ocaml_lex_read_rec lexbuf __ocaml_lex_state
