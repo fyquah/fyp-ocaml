@@ -25,32 +25,54 @@ let create closure_id offset =
   At_call_site { closure_id = Some closure_id; offset; }
 ;;
 
-let print_closure_id_option ppf = function
-  | None -> Format.fprintf ppf "TOP_LEVEL"
-  | Some closure_id ->
-    let var = Closure_id.unwrap closure_id in
-    Format.fprintf ppf "%a" Variable.print_mach var
+let closure_id_of_sexp sexp =
+  Closure_id.wrap (Variable.of_sexp sexp)
 ;;
 
-let print_mach ppf = function
-  | At_call_site at_call_site ->
-    Format.fprintf ppf "%a:%d"
-      print_closure_id_option at_call_site.closure_id at_call_site.offset
-  | Enter_decl closure_id ->
-    let var = Closure_id.unwrap closure_id in
-    Format.fprintf ppf "{%a}" Variable.print_mach var
+let closure_id_to_sexp closure_id =
+  Variable.to_sexp (Closure_id.unwrap closure_id)
+;;
 
-let of_string s =
-  match String.split_on_char ':' s with
-  | closure_id :: offset :: [] ->
-    let closure_id =
-      match closure_id with
-      | "TOP_LEVEL" -> None
-      | otherwise ->
-        Some (Closure_id.wrap (Variable.of_string_mach otherwise))
-    in
-    let offset = int_of_string offset in
-    At_call_site { closure_id; offset; }
-  | decl :: [] ->
-    Enter_decl (Closure_id.wrap (Variable.of_string_mach decl))
-  | _ -> Misc.fatal_error "[Call_site.of_string] failed"
+let offset_to_sexp o = Sexp.Atom (string_of_int o)
+
+let option_closure_id_to_sexp s =
+  match s with
+  | None -> Sexp.Atom "TOP_LEVEL"
+  | Some c -> closure_id_to_sexp c
+
+let option_closure_id_of_sexp sexp =
+  match sexp with
+  | Sexp.Atom "TOP_LEVEL" -> None
+  | otherwise -> Some (closure_id_of_sexp otherwise)
+
+let offset_of_sexp sexp =
+  match sexp with
+  | Sexp.Atom s -> int_of_string s
+  | _ ->
+    Misc.fatal_errorf "Cannot parse %a as an offset"
+      Sexp.print_mach sexp
+
+let to_sexp sexp =
+  let open Sexp in
+  match sexp with
+  | Enter_decl closure_id ->
+    List [ Atom "Enter_decl"; closure_id_to_sexp closure_id; ]
+  | At_call_site { closure_id ; offset } ->
+    List [
+      Atom "At_call_site";
+      option_closure_id_to_sexp closure_id;
+      offset_to_sexp offset;
+    ]
+
+let of_sexp sexp =
+  let open Sexp in
+  match sexp with
+  | List (Atom "Enter_decl" :: closure_id :: []) ->
+    Enter_decl (closure_id_of_sexp closure_id)
+  | List (Atom "At_call_site" :: closure_id :: offset :: []) ->
+    let closure_id = option_closure_id_of_sexp closure_id in
+    let offset = offset_of_sexp offset in
+    At_call_site { closure_id ; offset;  }
+  | _ ->
+    Misc.fatal_errorf "Cannot parse %a as a Call_site.t"
+      Sexp.print_mach sexp

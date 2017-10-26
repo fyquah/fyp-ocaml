@@ -13,6 +13,6 @@ val create_top_level : offset -> t
 
 val create : Closure_id.t -> offset -> t
 
-val print_mach : Format.formatter -> t -> unit
+val to_sexp : t -> Sexp.t
 
-val of_string : string -> t
+val of_sexp : Sexp.t -> t

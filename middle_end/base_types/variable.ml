@@ -23,24 +23,27 @@ type t = {
   (** [name_stamp]s are unique within any given compilation unit. *)
 }
 
-let print_mach ppf t =
-  Format.fprintf ppf "(%a %s %d)"
-    Compilation_unit.print_mach t.compilation_unit t.name t.name_stamp
+let to_sexp t =
+  let open Sexp in
+  List [
+    (Compilation_unit.to_sexp t.compilation_unit);
+    (Atom t.name);
+    (Atom (string_of_int t.name_stamp));
+  ]
 ;;
 
-let of_string_mach s =
-  let len = String.length s in
-  assert (String.get s 0 = '(');
-  assert (String.get s (len - 1) = ')');
-  let substr = String.sub s 1 (len - 2) in
-  match String.split_on_char ' ' substr with
-  | compilation_unit :: name :: name_stamp :: [] ->
+let of_sexp s =
+  let open Sexp in
+  match s with
+  | List (compilation_unit :: Atom name :: Atom name_stamp :: []) ->
     let name_stamp = int_of_string name_stamp in
     let compilation_unit =
-      Compilation_unit.of_string_mach compilation_unit
+      Compilation_unit.of_sexp compilation_unit
     in
     { compilation_unit; name; name_stamp }
-  | _ -> Misc.fatal_errorf "Cannot parse %s as a Variable.t" s
+  | _ ->
+    Misc.fatal_errorf "Cannot parse %a as a Variable.t"
+      Sexp.print_mach s
 ;;
 
 include Identifiable.Make (struct

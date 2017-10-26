@@ -190,6 +190,7 @@ MIDDLE_END=\
   sexp/sexp.cmo \
   sexp/sexp_parser.cmo \
   sexp/sexp_lexer.cmo \
+  sexp/sexp_file.cmo \
   middle_end/pgo.cmo \
   middle_end/debuginfo.cmo \
   middle_end/base_types/tag.cmo \
@@ -1287,7 +1288,7 @@ partialclean::
 .PHONY: depend
 depend: beforedepend
 	(for d in utils parsing typing bytecomp asmcomp middle_end \
-	 middle_end/base_types driver toplevel; \
+	 middle_end/base_types driver toplevel sexp; \
 	 do $(CAMLDEP) -slash $(DEPFLAGS) $$d/*.mli $$d/*.ml; \
 	 done) > .depend
 	$(CAMLDEP) -slash $(DEPFLAGS) -native \

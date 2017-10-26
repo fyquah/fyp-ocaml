@@ -1263,12 +1263,12 @@ middle_end/closure_conversion_aux.cmi : middle_end/base_types/variable.cmi \
     middle_end/base_types/static_exception.cmi \
     middle_end/base_types/mutable_variable.cmi parsing/location.cmi \
     bytecomp/lambda.cmi typing/ident.cmi
-middle_end/data_collector.cmo : middle_end/base_types/variable.cmi \
-    utils/misc.cmi middle_end/base_types/closure_id.cmi \
-    middle_end/base_types/call_site.cmi middle_end/data_collector.cmi
-middle_end/data_collector.cmx : middle_end/base_types/variable.cmx \
-    utils/misc.cmx middle_end/base_types/closure_id.cmx \
-    middle_end/base_types/call_site.cmx middle_end/data_collector.cmi
+middle_end/data_collector.cmo : sexp/sexp_file.cmi sexp/sexp.cmi \
+    middle_end/base_types/closure_id.cmi middle_end/base_types/call_site.cmi \
+    middle_end/data_collector.cmi
+middle_end/data_collector.cmx : sexp/sexp_file.cmx sexp/sexp.cmx \
+    middle_end/base_types/closure_id.cmx middle_end/base_types/call_site.cmx \
+    middle_end/data_collector.cmi
 middle_end/data_collector.cmi : middle_end/base_types/closure_id.cmi \
     middle_end/base_types/call_site.cmi
 middle_end/debuginfo.cmo : parsing/location.cmi middle_end/debuginfo.cmi
@@ -1877,12 +1877,13 @@ middle_end/unbox_specialised_args.cmi : middle_end/base_types/variable.cmi \
     middle_end/inlining_cost.cmi middle_end/inline_and_simplify_aux.cmi \
     middle_end/flambda.cmi
 middle_end/base_types/call_site.cmo : middle_end/base_types/variable.cmi \
-    utils/misc.cmi middle_end/base_types/closure_id.cmi \
+    sexp/sexp.cmi utils/misc.cmi middle_end/base_types/closure_id.cmi \
     middle_end/base_types/call_site.cmi
 middle_end/base_types/call_site.cmx : middle_end/base_types/variable.cmx \
-    utils/misc.cmx middle_end/base_types/closure_id.cmx \
+    sexp/sexp.cmx utils/misc.cmx middle_end/base_types/closure_id.cmx \
     middle_end/base_types/call_site.cmi
-middle_end/base_types/call_site.cmi : middle_end/base_types/closure_id.cmi
+middle_end/base_types/call_site.cmi : sexp/sexp.cmi \
+    middle_end/base_types/closure_id.cmi
 middle_end/base_types/closure_element.cmo : \
     middle_end/base_types/variable.cmi \
     middle_end/base_types/closure_element.cmi
@@ -1890,7 +1891,7 @@ middle_end/base_types/closure_element.cmx : \
     middle_end/base_types/variable.cmx \
     middle_end/base_types/closure_element.cmi
 middle_end/base_types/closure_element.cmi : \
-    middle_end/base_types/variable.cmi utils/identifiable.cmi \
+    middle_end/base_types/variable.cmi sexp/sexp.cmi utils/identifiable.cmi \
     middle_end/base_types/compilation_unit.cmi
 middle_end/base_types/closure_id.cmo : \
     middle_end/base_types/closure_element.cmi \
@@ -1900,13 +1901,13 @@ middle_end/base_types/closure_id.cmx : \
     middle_end/base_types/closure_id.cmi
 middle_end/base_types/closure_id.cmi : \
     middle_end/base_types/closure_element.cmi
-middle_end/base_types/compilation_unit.cmo : utils/misc.cmi \
+middle_end/base_types/compilation_unit.cmo : sexp/sexp.cmi utils/misc.cmi \
     middle_end/base_types/linkage_name.cmi utils/identifiable.cmi \
     typing/ident.cmi middle_end/base_types/compilation_unit.cmi
-middle_end/base_types/compilation_unit.cmx : utils/misc.cmx \
+middle_end/base_types/compilation_unit.cmx : sexp/sexp.cmx utils/misc.cmx \
     middle_end/base_types/linkage_name.cmx utils/identifiable.cmx \
     typing/ident.cmx middle_end/base_types/compilation_unit.cmi
-middle_end/base_types/compilation_unit.cmi : \
+middle_end/base_types/compilation_unit.cmi : sexp/sexp.cmi \
     middle_end/base_types/linkage_name.cmi utils/identifiable.cmi \
     typing/ident.cmi
 middle_end/base_types/export_id.cmo : utils/identifiable.cmi \
@@ -1984,14 +1985,16 @@ middle_end/base_types/var_within_closure.cmx : \
     middle_end/base_types/var_within_closure.cmi
 middle_end/base_types/var_within_closure.cmi : \
     middle_end/base_types/closure_element.cmi
-middle_end/base_types/variable.cmo : utils/misc.cmi utils/identifiable.cmi \
-    typing/ident.cmi middle_end/base_types/compilation_unit.cmi \
+middle_end/base_types/variable.cmo : sexp/sexp.cmi utils/misc.cmi \
+    utils/identifiable.cmi typing/ident.cmi \
+    middle_end/base_types/compilation_unit.cmi \
     middle_end/base_types/variable.cmi
-middle_end/base_types/variable.cmx : utils/misc.cmx utils/identifiable.cmx \
-    typing/ident.cmx middle_end/base_types/compilation_unit.cmx \
+middle_end/base_types/variable.cmx : sexp/sexp.cmx utils/misc.cmx \
+    utils/identifiable.cmx typing/ident.cmx \
+    middle_end/base_types/compilation_unit.cmx \
     middle_end/base_types/variable.cmi
-middle_end/base_types/variable.cmi : utils/identifiable.cmi typing/ident.cmi \
-    middle_end/base_types/compilation_unit.cmi
+middle_end/base_types/variable.cmi : sexp/sexp.cmi utils/identifiable.cmi \
+    typing/ident.cmi middle_end/base_types/compilation_unit.cmi
 driver/compdynlink.cmi :
 driver/compenv.cmo : utils/warnings.cmi utils/misc.cmi parsing/location.cmi \
     utils/config.cmi utils/clflags.cmi utils/ccomp.cmi driver/compenv.cmi
@@ -2244,6 +2247,21 @@ toplevel/trace.cmx : typing/types.cmx toplevel/toploop.cmx \
     parsing/asttypes.cmi toplevel/trace.cmi
 toplevel/trace.cmi : typing/types.cmi typing/path.cmi parsing/longident.cmi \
     typing/env.cmi
+sexp/main.cmo : sexp/sexp_parser.cmi sexp/sexp_lexer.cmo sexp/sexp.cmi
+sexp/main.cmx : sexp/sexp_parser.cmx sexp/sexp_lexer.cmx sexp/sexp.cmx
+sexp/sexp.cmo : sexp/sexp.cmi
+sexp/sexp.cmx : sexp/sexp.cmi
+sexp/sexp.cmi :
+sexp/sexp_file.cmo : sexp/sexp_parser.cmi sexp/sexp_lexer.cmo sexp/sexp.cmi \
+    sexp/sexp_file.cmi
+sexp/sexp_file.cmx : sexp/sexp_parser.cmx sexp/sexp_lexer.cmx sexp/sexp.cmx \
+    sexp/sexp_file.cmi
+sexp/sexp_file.cmi : sexp/sexp.cmi
+sexp/sexp_lexer.cmo : sexp/sexp_parser.cmi
+sexp/sexp_lexer.cmx : sexp/sexp_parser.cmx
+sexp/sexp_parser.cmo : sexp/sexp.cmi sexp/sexp_parser.cmi
+sexp/sexp_parser.cmx : sexp/sexp.cmx sexp/sexp_parser.cmi
+sexp/sexp_parser.cmi : sexp/sexp.cmi
 driver/compdynlink.cmx : asmcomp/cmx_format.cmi driver/compdynlink.cmi
 driver/compdynlink.cmo : bytecomp/symtable.cmi bytecomp/opcodes.cmo \
     utils/misc.cmi bytecomp/meta.cmi bytecomp/dll.cmi utils/consistbl.cmi \

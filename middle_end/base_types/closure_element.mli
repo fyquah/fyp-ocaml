@@ -30,3 +30,6 @@ val get_compilation_unit : t -> Compilation_unit.t
 val unique_name : t -> string
 
 val output_full : out_channel -> t -> unit
+
+val t_of_sexp : Sexp.t -> t
+val sexp_of_t : t -> Sexp.t

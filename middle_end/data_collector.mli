@@ -12,6 +12,6 @@ val inlining_overrides : t list ref
 
 val save : output_prefix: string -> unit
 
-val print_list : Format.formatter -> t list -> unit
+val load_from_channel : in_channel -> t list
 
-val parse : string list -> t list
+val pprint_list : Format.formatter -> t list -> unit

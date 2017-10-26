@@ -96,20 +96,11 @@ let implementation ~backend ppf sourcefile outputprefix =
         begin match !Clflags.inlining_overrides with
         | None -> ()
         | Some filename ->
-          let lines =
-            let chan = open_in filename in
-            let lines = ref [] in
-            try
-              while true; do
-                lines := input_line chan :: !lines
-              done; !lines
-            with End_of_file ->
-              close_in chan;
-              List.rev !lines
-	  in
-          Data_collector.inlining_overrides := Data_collector.parse lines;
-          Format.printf "Loaded override devisions: %a\n"
-            Data_collector.print_list
+          let ic = open_in filename in
+          let ts = Data_collector.load_from_channel ic in
+          Data_collector.inlining_overrides := ts;
+          Format.printf "Loaded override devisions: \n%a\n"
+            Data_collector.pprint_list
             !Data_collector.inlining_overrides
         end;
 
