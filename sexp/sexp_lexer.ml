@@ -1,8 +1,8 @@
-# 1 "lexer.mll"
+# 1 "sexp_lexer.mll"
  
 
 open Lexing
-open Parser
+open Sexp_parser
 
 exception Syntax_error of string
 
@@ -15,7 +15,7 @@ let next_line lexbuf =
 ;;
 
 
-# 19 "lexer.ml"
+# 19 "sexp_lexer.ml"
 let __ocaml_lex_tables = {
   Lexing.lex_base =
    "\000\000\250\255\251\255\252\255\253\255\254\255\001\000\003\000\
@@ -113,34 +113,34 @@ let rec read lexbuf =
 and __ocaml_lex_read_rec lexbuf __ocaml_lex_state =
   match Lexing.engine __ocaml_lex_tables __ocaml_lex_state lexbuf with
       | 0 ->
-# 24 "lexer.mll"
+# 24 "sexp_lexer.mll"
             ( read lexbuf )
-# 119 "lexer.ml"
+# 119 "sexp_lexer.ml"
 
   | 1 ->
-# 25 "lexer.mll"
+# 25 "sexp_lexer.mll"
             ( next_line lexbuf; read lexbuf )
-# 124 "lexer.ml"
+# 124 "sexp_lexer.ml"
 
   | 2 ->
-# 26 "lexer.mll"
+# 26 "sexp_lexer.mll"
             ( LEFT_BRACE )
-# 129 "lexer.ml"
+# 129 "sexp_lexer.ml"
 
   | 3 ->
-# 27 "lexer.mll"
+# 27 "sexp_lexer.mll"
             ( RIGHT_BRACE )
-# 134 "lexer.ml"
+# 134 "sexp_lexer.ml"
 
   | 4 ->
-# 28 "lexer.mll"
+# 28 "sexp_lexer.mll"
                                     ( STRING (Lexing.lexeme lexbuf) )
-# 139 "lexer.ml"
+# 139 "sexp_lexer.ml"
 
   | 5 ->
-# 29 "lexer.mll"
+# 29 "sexp_lexer.mll"
             ( EOF )
-# 144 "lexer.ml"
+# 144 "sexp_lexer.ml"
 
   | __ocaml_lex_state -> lexbuf.Lexing.refill_buff lexbuf;
       __ocaml_lex_read_rec lexbuf __ocaml_lex_state

@@ -5,9 +5,9 @@ module MenhirBasics = struct
   
   type token = 
     | STRING of (
-# 1 "parser.mly"
+# 1 "sexp_parser.mly"
        (string)
-# 11 "parser.ml"
+# 11 "sexp_parser.ml"
   )
     | RIGHT_BRACE
     | LEFT_BRACE
@@ -44,9 +44,9 @@ and _menhir_reduce6 : _menhir_env -> ('ttv_tail * _menhir_state) * _menhir_state
     let _3 = () in
     let _1 = () in
     let _v : 'tv_value = 
-# 15 "parser.mly"
+# 15 "sexp_parser.mly"
                                              ( Sexp.List obj )
-# 50 "parser.ml"
+# 50 "sexp_parser.ml"
      in
     _menhir_goto_value _menhir_env _menhir_stack _menhir_s _v
 
@@ -64,9 +64,9 @@ and _menhir_goto_value : _menhir_env -> 'ttv_tail -> _menhir_state -> 'tv_value 
         let ((hd : 'tv_value) : 'tv_value) = _v in
         ((let (_menhir_stack, _menhir_s, (tl : 'tv_rev_sexp_list)) = _menhir_stack in
         let _v : 'tv_rev_sexp_list = 
-# 23 "parser.mly"
+# 23 "sexp_parser.mly"
                                    ( hd :: tl )
-# 70 "parser.ml"
+# 70 "sexp_parser.ml"
          in
         _menhir_goto_rev_sexp_list _menhir_env _menhir_stack _menhir_s _v) : 'freshtv46)) : 'freshtv48)
     | MenhirState0 ->
@@ -79,13 +79,13 @@ and _menhir_goto_value : _menhir_env -> 'ttv_tail -> _menhir_state -> 'tv_value 
         let (_menhir_s : _menhir_state) = _menhir_s in
         let ((v : 'tv_value) : 'tv_value) = _v in
         ((let _v : (
-# 6 "parser.mly"
+# 6 "sexp_parser.mly"
        (Sexp.t option)
-# 85 "parser.ml"
+# 85 "sexp_parser.ml"
         ) = 
-# 11 "parser.mly"
+# 11 "sexp_parser.mly"
               ( Some v )
-# 89 "parser.ml"
+# 89 "sexp_parser.ml"
          in
         _menhir_goto_prog _menhir_env _menhir_stack _menhir_s _v) : 'freshtv50)) : 'freshtv52)
     | _ ->
@@ -111,9 +111,9 @@ and _menhir_goto_rev_sexp_list : _menhir_env -> 'ttv_tail -> _menhir_state -> 't
         let (_menhir_stack : 'freshtv25) = Obj.magic _menhir_stack in
         let (_menhir_s : _menhir_state) = MenhirState5 in
         let (_v : (
-# 1 "parser.mly"
+# 1 "sexp_parser.mly"
        (string)
-# 117 "parser.ml"
+# 117 "sexp_parser.ml"
         )) = _v in
         ((let _menhir_env = _menhir_discard _menhir_env in
         _menhir_reduce7 _menhir_env (Obj.magic _menhir_stack) _menhir_s _v) : 'freshtv26)
@@ -122,9 +122,9 @@ and _menhir_goto_rev_sexp_list : _menhir_env -> 'ttv_tail -> _menhir_state -> 't
         let (_menhir_stack : 'freshtv41 * _menhir_state * 'tv_rev_sexp_list) = Obj.magic _menhir_stack in
         ((let (_menhir_stack, _menhir_s, (obj : 'tv_rev_sexp_list)) = _menhir_stack in
         let _v : 'tv_sexp_list = 
-# 19 "parser.mly"
+# 19 "sexp_parser.mly"
                                ( List.rev obj )
-# 128 "parser.ml"
+# 128 "sexp_parser.ml"
          in
         let (_menhir_env : _menhir_env) = _menhir_env in
         let (_menhir_stack : 'freshtv39) = _menhir_stack in
@@ -198,56 +198,56 @@ and _menhir_errorcase : _menhir_env -> 'ttv_tail -> _menhir_state -> 'ttv_return
         (raise _eRR : 'freshtv22)
 
 and _menhir_reduce7 : _menhir_env -> 'ttv_tail -> _menhir_state -> (
-# 1 "parser.mly"
+# 1 "sexp_parser.mly"
        (string)
-# 204 "parser.ml"
+# 204 "sexp_parser.ml"
 ) -> 'ttv_return =
   fun _menhir_env _menhir_stack _menhir_s (s : (
-# 1 "parser.mly"
+# 1 "sexp_parser.mly"
        (string)
-# 209 "parser.ml"
+# 209 "sexp_parser.ml"
   )) ->
     let _v : 'tv_value = 
-# 16 "parser.mly"
+# 16 "sexp_parser.mly"
                ( Sexp.Atom s )
-# 214 "parser.ml"
+# 214 "sexp_parser.ml"
      in
     _menhir_goto_value _menhir_env _menhir_stack _menhir_s _v
 
 and _menhir_reduce3 : _menhir_env -> 'ttv_tail -> _menhir_state -> 'ttv_return =
   fun _menhir_env _menhir_stack _menhir_s ->
     let _v : 'tv_rev_sexp_list = 
-# 22 "parser.mly"
+# 22 "sexp_parser.mly"
                 ( [] )
-# 223 "parser.ml"
+# 223 "sexp_parser.ml"
      in
     _menhir_goto_rev_sexp_list _menhir_env _menhir_stack _menhir_s _v
 
 and _menhir_goto_prog : _menhir_env -> 'ttv_tail -> _menhir_state -> (
-# 6 "parser.mly"
+# 6 "sexp_parser.mly"
        (Sexp.t option)
-# 230 "parser.ml"
+# 230 "sexp_parser.ml"
 ) -> 'ttv_return =
   fun _menhir_env _menhir_stack _menhir_s _v ->
     let (_menhir_env : _menhir_env) = _menhir_env in
     let (_menhir_stack : 'freshtv13) = Obj.magic _menhir_stack in
     let (_menhir_s : _menhir_state) = _menhir_s in
     let (_v : (
-# 6 "parser.mly"
+# 6 "sexp_parser.mly"
        (Sexp.t option)
-# 239 "parser.ml"
+# 239 "sexp_parser.ml"
     )) = _v in
     ((let (_menhir_env : _menhir_env) = _menhir_env in
     let (_menhir_stack : 'freshtv11) = Obj.magic _menhir_stack in
     let (_menhir_s : _menhir_state) = _menhir_s in
     let ((_1 : (
-# 6 "parser.mly"
+# 6 "sexp_parser.mly"
        (Sexp.t option)
-# 247 "parser.ml"
+# 247 "sexp_parser.ml"
     )) : (
-# 6 "parser.mly"
+# 6 "sexp_parser.mly"
        (Sexp.t option)
-# 251 "parser.ml"
+# 251 "sexp_parser.ml"
     )) = _v in
     (Obj.magic _1 : 'freshtv12)) : 'freshtv14)
 
@@ -264,9 +264,9 @@ and _menhir_discard : _menhir_env -> _menhir_env =
     }
 
 and prog : (Lexing.lexbuf -> token) -> Lexing.lexbuf -> (
-# 6 "parser.mly"
+# 6 "sexp_parser.mly"
        (Sexp.t option)
-# 270 "parser.ml"
+# 270 "sexp_parser.ml"
 ) =
   fun lexer lexbuf ->
     let _menhir_env =
@@ -294,13 +294,13 @@ and prog : (Lexing.lexbuf -> token) -> Lexing.lexbuf -> (
         let (_menhir_s : _menhir_state) = _menhir_s in
         ((let _1 = () in
         let _v : (
-# 6 "parser.mly"
+# 6 "sexp_parser.mly"
        (Sexp.t option)
-# 300 "parser.ml"
+# 300 "sexp_parser.ml"
         ) = 
-# 10 "parser.mly"
+# 10 "sexp_parser.mly"
         ( None )
-# 304 "parser.ml"
+# 304 "sexp_parser.ml"
          in
         _menhir_goto_prog _menhir_env _menhir_stack _menhir_s _v) : 'freshtv2)) : 'freshtv4)
     | LEFT_BRACE ->
@@ -315,9 +315,9 @@ and prog : (Lexing.lexbuf -> token) -> Lexing.lexbuf -> (
         let (_menhir_stack : 'freshtv7) = Obj.magic _menhir_stack in
         let (_menhir_s : _menhir_state) = MenhirState0 in
         let (_v : (
-# 1 "parser.mly"
+# 1 "sexp_parser.mly"
        (string)
-# 321 "parser.ml"
+# 321 "sexp_parser.ml"
         )) = _v in
         (_menhir_reduce7 _menhir_env (Obj.magic _menhir_stack) _menhir_s _v : 'freshtv8)
     | _ ->
@@ -329,4 +329,4 @@ and prog : (Lexing.lexbuf -> token) -> Lexing.lexbuf -> (
   
 
 
-# 333 "parser.ml"
+# 333 "sexp_parser.ml"

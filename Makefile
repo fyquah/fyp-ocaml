@@ -56,7 +56,8 @@ CAMLC=$(CAMLRUN) boot/ocamlc -g -nostdlib -I boot -use-prims byterun/primitives
 CAMLOPT=$(CAMLRUN) ./ocamlopt -g -nostdlib -I stdlib -I otherlibs/dynlink
 ARCHES=amd64 i386 arm arm64 power sparc s390x
 INCLUDES=-I utils -I parsing -I typing -I bytecomp -I middle_end \
-        -I middle_end/base_types -I asmcomp -I driver -I toplevel
+        -I middle_end/base_types -I asmcomp -I driver -I toplevel \
+	-I sexp
 
 COMPFLAGS=-strict-sequence -principal -absname -w +a-4-9-41-42-44-45-48 \
 	  -warn-error A \
@@ -186,6 +187,9 @@ ASMCOMP=\
   driver/opterrors.cmo driver/optcompile.cmo
 
 MIDDLE_END=\
+  sexp/sexp.cmo \
+  sexp/sexp_parser.cmo \
+  sexp/sexp_lexer.cmo \
   middle_end/pgo.cmo \
   middle_end/debuginfo.cmo \
   middle_end/base_types/tag.cmo \

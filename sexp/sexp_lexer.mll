@@ -1,7 +1,7 @@
 {
 
 open Lexing
-open Parser
+open Sexp_parser
 
 exception Syntax_error of string
 

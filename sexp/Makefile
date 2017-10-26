@@ -1,13 +1,13 @@
 all: main.native
 
-lexer.ml lexer.mli: lexer.mll
-	ocamllex lexer.mll
+sexp_lexer.ml sexp_lexer.mli: sexp_lexer.mll
+	ocamllex sexp_lexer.mll
 
-parser.ml parser.mli: parser.mly
-	menhir parser.mly
+sexp_parser.ml sexp_parser.mli: sexp_parser.mly
+	menhir sexp_parser.mly
 
-main.native: sexp.ml parser.mli parser.ml lexer.ml main.ml 
+main.native: sexp.mli sexp.ml sexp_parser.mli sexp_parser.ml sexp_lexer.ml main.ml
 	ocamlopt $^ -o $@
 
 clean:
-	rm lexer.ml parser.mli parser.ml main.native *.o *.cm*
+	rm sexp_lexer.ml sexp_parser.mli sexp_parser.ml main.native *.o *.cm*
