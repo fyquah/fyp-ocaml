@@ -3,6 +3,8 @@
 type offset
 type t
 
+val equal : t -> t -> bool
+
 val base_offset : offset
 
 val inc : offset -> offset

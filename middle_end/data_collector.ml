@@ -48,3 +48,25 @@ let pprint_list ppf ts =
     (fun t -> Format.fprintf ppf "=> %a\n" Sexp.print_mach (sexp_of_t t))
     ts
 ;;
+
+let equal a b =
+  a.decision = b.decision &&
+  Closure_id.equal a.applied b.applied &&
+  Helper.list_equal Call_site.equal a.call_stack b.call_stack
+
+let find_decision ~call_stack ~applied =
+  match
+    List.find_opt (fun a ->
+        Closure_id.equal a.applied applied
+        && Helper.list_equal Call_site.equal a.call_stack call_stack)
+      !inlining_overrides
+  with
+  | None -> None
+  | Some a ->
+    Format.printf "OVERRIDE Applied = %a call stack = %a with %b\n"
+      Closure_id.print applied
+      Sexp.print_mach
+      (Sexp.sexp_of_list Call_site.to_sexp call_stack)
+      a.decision;
+    Some a.decision
+;;

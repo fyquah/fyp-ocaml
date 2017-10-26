@@ -17,6 +17,9 @@ utils/config.cmi :
 utils/consistbl.cmo : utils/consistbl.cmi
 utils/consistbl.cmx : utils/consistbl.cmi
 utils/consistbl.cmi :
+utils/helper.cmo : utils/helper.cmi
+utils/helper.cmx : utils/helper.cmi
+utils/helper.cmi :
 utils/identifiable.cmo : utils/misc.cmi utils/identifiable.cmi
 utils/identifiable.cmx : utils/misc.cmx utils/identifiable.cmi
 utils/identifiable.cmi :
@@ -1264,11 +1267,11 @@ middle_end/closure_conversion_aux.cmi : middle_end/base_types/variable.cmi \
     middle_end/base_types/mutable_variable.cmi parsing/location.cmi \
     bytecomp/lambda.cmi typing/ident.cmi
 middle_end/data_collector.cmo : sexp/sexp_file.cmi sexp/sexp.cmi \
-    middle_end/base_types/closure_id.cmi middle_end/base_types/call_site.cmi \
-    middle_end/data_collector.cmi
+    utils/helper.cmi middle_end/base_types/closure_id.cmi \
+    middle_end/base_types/call_site.cmi middle_end/data_collector.cmi
 middle_end/data_collector.cmx : sexp/sexp_file.cmx sexp/sexp.cmx \
-    middle_end/base_types/closure_id.cmx middle_end/base_types/call_site.cmx \
-    middle_end/data_collector.cmi
+    utils/helper.cmx middle_end/base_types/closure_id.cmx \
+    middle_end/base_types/call_site.cmx middle_end/data_collector.cmi
 middle_end/data_collector.cmi : middle_end/base_types/closure_id.cmi \
     middle_end/base_types/call_site.cmi
 middle_end/debuginfo.cmo : parsing/location.cmi middle_end/debuginfo.cmi

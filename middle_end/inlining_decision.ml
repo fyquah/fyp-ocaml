@@ -179,12 +179,10 @@ let inline env r ~call_site ~lhs_of_application
       Try_it
     end
   in
-  match try_inlining with
-  | Don't_try_it decision -> Original decision
-  | Try_it ->
-    let r =
-      R.set_inlining_threshold r (Some remaining_inlining_threshold)
-    in
+  let call_stack = call_site :: E.inlining_stack env in
+  let applied = closure_id_being_applied in
+  match Data_collector.find_decision ~call_stack ~applied  with
+  | Some true  ->
     let body, r_inlined =
       (* First we construct the code that would result from copying the body of
          the function, without doing any further inlining upon it, to the call
@@ -194,81 +192,106 @@ let inline env r ~call_site ~lhs_of_application
         ~closure_id_being_applied ~specialise_requested ~inline_requested
         ~function_decl ~args ~dbg ~simplify
     in
-    let num_direct_applications_seen =
-      (R.num_direct_applications r_inlined) - (R.num_direct_applications r)
+    (* Inlining the body of the function was sufficiently beneficial that we
+       will keep it, replacing the call site.  We continue by allowing
+       further inlining within the inlined copy of the body. *)
+    let r_inlined =
+      (* The meaning of requesting inlining is that the user ensure
+         that the function has a benefit of at least its size. It is not
+         added to the benefit exposed by the inlining because the user should
+         have taken that into account before annotating the function. *)
+      if always_inline then
+        R.map_benefit r_inlined
+          (Inlining_cost.Benefit.max ~round:(E.round env)
+             Inlining_cost.Benefit.(requested_inline ~size_of:body zero))
+      else r_inlined
     in
-    assert (num_direct_applications_seen >= 0);
-    let keep_inlined_version decision =
-      (* Inlining the body of the function was sufficiently beneficial that we
-         will keep it, replacing the call site.  We continue by allowing
-         further inlining within the inlined copy of the body. *)
-      let r_inlined =
-        (* The meaning of requesting inlining is that the user ensure
-           that the function has a benefit of at least its size. It is not
-           added to the benefit exposed by the inlining because the user should
-           have taken that into account before annotating the function. *)
-        if always_inline then
-          R.map_benefit r_inlined
-            (Inlining_cost.Benefit.max ~round:(E.round env)
-               Inlining_cost.Benefit.(requested_inline ~size_of:body zero))
-        else r_inlined
-      in
+    let r =
+      R.map_benefit r_inlined (Inlining_cost.Benefit.(+) (R.benefit r))
+    in
+    let env =
+      E.note_entering_inlined env closure_id_being_applied call_site
+    in
+    let env =
+      (* We decrement the unrolling count even if the function is not
+         recursive to avoid having to check whether or not it is recursive *)
+      E.inside_unrolled_function env function_decls.set_of_closures_origin
+    in
+    let env = E.inside_inlined_function env closure_id_being_applied in
+    let env =
+      if E.inlining_level env = 0
+         (* If the function was considered for inlining without considering
+            its sub-functions, and it is not below another inlining choice,
+            then we are certain that this code will be kept. *)
+      then env
+      else E.inlining_level_up env
+    in
+    Changed ((simplify env r body), S.Inlined.Override)
+  | Some false ->
+    Original S.Not_inlined.Override
+  | None ->
+    begin match try_inlining with
+    | Don't_try_it decision -> Original decision
+    | Try_it ->
       let r =
-        R.map_benefit r_inlined (Inlining_cost.Benefit.(+) (R.benefit r))
+        R.set_inlining_threshold r (Some remaining_inlining_threshold)
       in
-      let env =
-        E.note_entering_inlined env closure_id_being_applied call_site
+      let body, r_inlined =
+        (* First we construct the code that would result from copying the body of
+           the function, without doing any further inlining upon it, to the call
+           site. *)
+        Inlining_transforms.inline_by_copying_function_body ~env
+          ~r:(R.reset_benefit r) ~function_decls ~lhs_of_application
+          ~closure_id_being_applied ~specialise_requested ~inline_requested
+          ~function_decl ~args ~dbg ~simplify
       in
-      let env =
-        (* We decrement the unrolling count even if the function is not
-           recursive to avoid having to check whether or not it is recursive *)
-        E.inside_unrolled_function env function_decls.set_of_closures_origin
+      let num_direct_applications_seen =
+        (R.num_direct_applications r_inlined) - (R.num_direct_applications r)
       in
-      let env = E.inside_inlined_function env closure_id_being_applied in
-      let env =
-        if E.inlining_level env = 0
-           (* If the function was considered for inlining without considering
-              its sub-functions, and it is not below another inlining choice,
-              then we are certain that this code will be kept. *)
-        then env
-        else E.inlining_level_up env
-      in
-      Changed ((simplify env r body), decision)
-    in
-    if always_inline then
-      keep_inlined_version S.Inlined.Annotation
-    else if only_use_of_function then
-      keep_inlined_version S.Inlined.Decl_local_to_application
-    else begin
-      let wsb =
-        W.create ~original body
-          ~toplevel:(E.at_toplevel env)
-          ~branch_depth:(E.branch_depth env)
-          ~lifting:function_decl.Flambda.is_a_functor
-          ~round:(E.round env)
-          ~benefit:(R.benefit r_inlined)
-      in
-      if W.evaluate wsb then
-        keep_inlined_version (S.Inlined.Without_subfunctions wsb)
-      else if num_direct_applications_seen < 1 then begin
-      (* Inlining the body of the function did not appear sufficiently
-         beneficial; however, it may become so if we inline within the body
-         first.  We try that next, unless it is known that there were
-         no direct applications in the simplified body computed above, meaning
-         no opportunities for inlining. *)
-        Original (S.Not_inlined.Without_subfunctions wsb)
-      end else begin
-        let env = E.inlining_level_up env in
+      assert (num_direct_applications_seen >= 0);
+      let keep_inlined_version decision =
+        (* Inlining the body of the function was sufficiently beneficial that we
+           will keep it, replacing the call site.  We continue by allowing
+           further inlining within the inlined copy of the body. *)
+        let r_inlined =
+          (* The meaning of requesting inlining is that the user ensure
+             that the function has a benefit of at least its size. It is not
+             added to the benefit exposed by the inlining because the user should
+             have taken that into account before annotating the function. *)
+          if always_inline then
+            R.map_benefit r_inlined
+              (Inlining_cost.Benefit.max ~round:(E.round env)
+                 Inlining_cost.Benefit.(requested_inline ~size_of:body zero))
+          else r_inlined
+        in
+        let r =
+          R.map_benefit r_inlined (Inlining_cost.Benefit.(+) (R.benefit r))
+        in
         let env =
           E.note_entering_inlined env closure_id_being_applied call_site
         in
         let env =
-          (* We decrement the unrolling count even if the function is recursive
-             to avoid having to check whether or not it is recursive *)
+          (* We decrement the unrolling count even if the function is not
+             recursive to avoid having to check whether or not it is recursive *)
           E.inside_unrolled_function env function_decls.set_of_closures_origin
         in
-        let body, r_inlined = simplify env r_inlined body in
-        let wsb_with_subfunctions =
+        let env = E.inside_inlined_function env closure_id_being_applied in
+        let env =
+          if E.inlining_level env = 0
+             (* If the function was considered for inlining without considering
+                its sub-functions, and it is not below another inlining choice,
+                then we are certain that this code will be kept. *)
+          then env
+          else E.inlining_level_up env
+        in
+        Changed ((simplify env r body), decision)
+      in
+      if always_inline then
+        keep_inlined_version S.Inlined.Annotation
+      else if only_use_of_function then
+        keep_inlined_version S.Inlined.Decl_local_to_application
+      else begin
+        let wsb =
           W.create ~original body
             ~toplevel:(E.at_toplevel env)
             ~branch_depth:(E.branch_depth env)
@@ -276,27 +299,56 @@ let inline env r ~call_site ~lhs_of_application
             ~round:(E.round env)
             ~benefit:(R.benefit r_inlined)
         in
-        if W.evaluate wsb_with_subfunctions then begin
-          let res =
-            (body, R.map_benefit r_inlined
-                     (Inlining_cost.Benefit.(+) (R.benefit r)))
+        if W.evaluate wsb then
+          keep_inlined_version (S.Inlined.Without_subfunctions wsb)
+        else if num_direct_applications_seen < 1 then begin
+        (* Inlining the body of the function did not appear sufficiently
+           beneficial; however, it may become so if we inline within the body
+           first.  We try that next, unless it is known that there were
+           no direct applications in the simplified body computed above, meaning
+           no opportunities for inlining. *)
+          Original (S.Not_inlined.Without_subfunctions wsb)
+        end else begin
+          let env = E.inlining_level_up env in
+          let env =
+            E.note_entering_inlined env closure_id_being_applied call_site
           in
-          let decision =
-            S.Inlined.With_subfunctions (wsb, wsb_with_subfunctions)
+          let env =
+            (* We decrement the unrolling count even if the function is recursive
+               to avoid having to check whether or not it is recursive *)
+            E.inside_unrolled_function env function_decls.set_of_closures_origin
           in
-          Changed (res, decision)
-        end
-        else begin
-          (* r_inlined contains an approximation that may be invalid for the
-             untransformed expression: it may reference functions that only
-             exists if the body of the function is in fact inlined.
-             If the function approximation contained an approximation that
-             does not depend on the actual values of its arguments, it
-             could be returned instead of [A.value_unknown]. *)
-          let decision =
-            S.Not_inlined.With_subfunctions (wsb, wsb_with_subfunctions)
+          let body, r_inlined = simplify env r_inlined body in
+          let wsb_with_subfunctions =
+            W.create ~original body
+              ~toplevel:(E.at_toplevel env)
+              ~branch_depth:(E.branch_depth env)
+              ~lifting:function_decl.Flambda.is_a_functor
+              ~round:(E.round env)
+              ~benefit:(R.benefit r_inlined)
           in
-          Original decision
+          if W.evaluate wsb_with_subfunctions then begin
+            let res =
+              (body, R.map_benefit r_inlined
+                       (Inlining_cost.Benefit.(+) (R.benefit r)))
+            in
+            let decision =
+              S.Inlined.With_subfunctions (wsb, wsb_with_subfunctions)
+            in
+            Changed (res, decision)
+          end
+          else begin
+            (* r_inlined contains an approximation that may be invalid for the
+               untransformed expression: it may reference functions that only
+               exists if the body of the function is in fact inlined.
+               If the function approximation contained an approximation that
+               does not depend on the actual values of its arguments, it
+               could be returned instead of [A.value_unknown]. *)
+            let decision =
+              S.Not_inlined.With_subfunctions (wsb, wsb_with_subfunctions)
+            in
+            Original decision
+          end
         end
       end
     end

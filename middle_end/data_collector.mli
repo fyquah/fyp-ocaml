@@ -15,3 +15,10 @@ val save : output_prefix: string -> unit
 val load_from_channel : in_channel -> t list
 
 val pprint_list : Format.formatter -> t list -> unit
+
+val equal : t -> t -> bool
+
+val find_decision
+  :  call_stack: Call_site.t list
+  -> applied: Closure_id.t
+  -> bool option

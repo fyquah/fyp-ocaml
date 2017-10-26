@@ -11,6 +11,16 @@ type t =
   | Enter_decl of Closure_id.t
   | At_call_site of at_call_site
 
+let at_call_site_equal a b =
+  a.offset = b.offset &&
+  Helper.option_equal Closure_id.equal a.closure_id b.closure_id
+
+let equal a b =
+  match a, b with
+  | Enter_decl a, Enter_decl b -> Closure_id.equal a b
+  | At_call_site a, At_call_site b -> at_call_site_equal a b
+  | _ , _ -> false
+
 let base_offset = 0
 
 let inc offset = offset + 1
