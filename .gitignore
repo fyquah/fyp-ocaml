@@ -368,6 +368,7 @@
 /tools/make_opcodes
 /tools/make_opcodes.ml
 /tools/ocamloptdecisions
+/tools/ocamloptdecisions.opt
 
 /utils/config.ml
 

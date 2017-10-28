@@ -3,8 +3,9 @@
 type offset = int
 
 type at_call_site =
-  { closure_id : Closure_id.t option;
-    offset     : offset;
+  { source    : Closure_id.t option;
+    offset    : offset;
+    applied   : Closure_id.t;
   }
 
 type t =
@@ -13,7 +14,9 @@ type t =
 
 let at_call_site_equal a b =
   a.offset = b.offset &&
-  Helper.option_equal Closure_id.equal a.closure_id b.closure_id
+  Helper.option_equal Closure_id.equal a.source b.source &&
+  Closure_id.equal a.applied b.applied
+
 
 let equal a b =
   match a, b with
@@ -27,12 +30,12 @@ let inc offset = offset + 1
 
 let enter_decl closure_id = Enter_decl closure_id
 
-let create_top_level offset =
-  At_call_site { closure_id = None; offset }
+let create_top_level applied offset =
+  At_call_site { source = None; offset ; applied }
 ;;
 
-let create closure_id offset =
-  At_call_site { closure_id = Some closure_id; offset; }
+let create ~source ~applied offset =
+  At_call_site { source = Some source; offset; applied }
 ;;
 
 let closure_id_of_sexp sexp =
@@ -67,11 +70,12 @@ let to_sexp sexp =
   match sexp with
   | Enter_decl closure_id ->
     List [ Atom "Enter_decl"; closure_id_to_sexp closure_id; ]
-  | At_call_site { closure_id ; offset } ->
+  | At_call_site { source ; offset; applied } ->
     List [
       Atom "At_call_site";
-      option_closure_id_to_sexp closure_id;
+      option_closure_id_to_sexp source;
       offset_to_sexp offset;
+      closure_id_to_sexp applied
     ]
 
 let of_sexp sexp =
@@ -79,10 +83,11 @@ let of_sexp sexp =
   match sexp with
   | List (Atom "Enter_decl" :: closure_id :: []) ->
     Enter_decl (closure_id_of_sexp closure_id)
-  | List (Atom "At_call_site" :: closure_id :: offset :: []) ->
-    let closure_id = option_closure_id_of_sexp closure_id in
+  | List (Atom "At_call_site" :: source :: offset :: applied :: []) ->
+    let source = option_closure_id_of_sexp source in
     let offset = offset_of_sexp offset in
-    At_call_site { closure_id ; offset;  }
+    let applied = closure_id_of_sexp applied in
+    At_call_site { source ; offset; applied }
   | _ ->
     Misc.fatal_errorf "Cannot parse %a as a Call_site.t"
       Sexp.print_mach sexp
@@ -90,10 +95,11 @@ let of_sexp sexp =
 let pprint ppf t =
   match t with
   | At_call_site at_call_site ->
-    begin match at_call_site.closure_id with
+    Format.fprintf ppf "%a<" Closure_id.print at_call_site.applied;
+    begin match at_call_site.source with
     | None -> Format.fprintf ppf "TOP_LEVEL"
     | Some c -> Format.fprintf ppf "%a" Closure_id.print c
     end;
-    Format.fprintf ppf ":%d" at_call_site.offset;
+    Format.fprintf ppf ":%d>" at_call_site.offset;
   | Enter_decl closure_id ->
     Format.fprintf ppf "{%a}" Closure_id.print closure_id

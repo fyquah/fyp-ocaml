@@ -554,8 +554,11 @@ let for_call_site ~env ~r ~(function_decls : Flambda.function_declarations)
   let (call_site_offset, env) = E.next_call_site_offset env in
   let call_site =
     match E.current_function env with
-    | None -> Call_site.create_top_level call_site_offset
-    | Some closure_id -> Call_site.create closure_id call_site_offset
+    | None ->
+      Call_site.create_top_level closure_id_being_applied call_site_offset
+    | Some closure_id ->
+      Call_site.create call_site_offset
+        ~applied:closure_id_being_applied ~source:closure_id
   in
   if List.length args <> List.length args_approxs then begin
     Misc.fatal_error "Inlining_decision.for_call_site: inconsistent lengths \
