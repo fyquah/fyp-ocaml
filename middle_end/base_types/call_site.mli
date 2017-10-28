@@ -8,8 +8,13 @@ type at_call_site =
     applied   : Closure_id.t;
   }
 
+type enter_decl =
+  { source     : Closure_id.t option;
+    closure    : Closure_id.t;
+  }
+
 type t =
-  | Enter_decl of Closure_id.t
+  | Enter_decl of enter_decl
   | At_call_site of at_call_site
 
 val equal : t -> t -> bool
@@ -18,7 +23,7 @@ val base_offset : offset
 
 val inc : offset -> offset
 
-val enter_decl : Closure_id.t -> t
+val enter_decl : source: Closure_id.t option -> closure: Closure_id.t -> t
 
 val create_top_level : Closure_id.t -> offset -> t
 

@@ -421,8 +421,16 @@ module Env = struct
     in
     let t = unset_never_inline_outside_closures t in
     let t =
+      let source =
+        match t.inlining_stack with
+        | [] -> None
+        | hd :: _ ->
+          match hd with
+          | Enter_decl enter_decl -> Some enter_decl.closure
+          | At_call_site at_call_site -> Some at_call_site.applied
+      in
       let inlining_stack =
-        Call_site.enter_decl closure_id :: t.inlining_stack
+        Call_site.enter_decl ~closure:closure_id ~source :: t.inlining_stack
       in
       { t with inlining_stack }
     in
