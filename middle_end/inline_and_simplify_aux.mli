@@ -36,7 +36,7 @@ module Env : sig
     -> current_function: Closure_id.t option
     -> t
 
-  val next_call_site_offset : t -> (Call_site.offset * t)
+  val next_call_site_offset : t -> (Call_site.Offset.t * t)
 
   val inlining_stack : t -> Call_site.t list
 

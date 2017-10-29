@@ -21,7 +21,7 @@ module Env = struct
 
   type t = {
     backend : (module Backend_intf.S);
-    call_site_offset : Call_site.offset ref;
+    call_site_offset : Call_site.Offset.t ref;
     round : int;
     approx : (scope * Simple_value_approx.t) Variable.Map.t;
     approx_mutable : Simple_value_approx.t Mutable_variable.Map.t;
@@ -49,7 +49,7 @@ module Env = struct
 
   let create ~never_inline ~backend ~round ~current_function =
     { backend;
-      call_site_offset = ref Call_site.base_offset;
+      call_site_offset = ref Call_site.Offset.base;
       round;
       approx = Variable.Map.empty;
       approx_mutable = Mutable_variable.Map.empty;
@@ -80,7 +80,7 @@ module Env = struct
 
   let next_call_site_offset t =
     let offset = !(t.call_site_offset) in
-    t.call_site_offset := Call_site.inc offset;
+    t.call_site_offset := Call_site.Offset.inc offset;
     (offset, t)
 
   let local env =
@@ -388,7 +388,7 @@ module Env = struct
     if t.never_inline then t
     else
       let inlining_stack = call_site :: t.inlining_stack in
-      let call_site_offset = ref Call_site.base_offset in
+      let call_site_offset = ref Call_site.Offset.base in
       { t with
         inlining_stats_closure_stack =
           Inlining_stats.Closure_stack.note_entering_inlined
@@ -399,7 +399,7 @@ module Env = struct
       }
 
   let inside_inlined_stub t applied call_site =
-    let call_site_offset = ref Call_site.base_offset in
+    let call_site_offset = ref Call_site.Offset.base in
     let inlining_stack = call_site :: t.inlining_stack in
     { t with current_function = Some applied;
              inlining_stack;

@@ -1,10 +1,20 @@
 [@@@ocaml.warning "+a-4-9-30-40-41-42"]
 
-type offset = int
+module Offset = struct
+  type t = int
+
+  let base = 0
+
+  let inc t = t + 1
+
+  let to_int t = t
+
+  let equal a b = (a = b)
+end
 
 type at_call_site =
   { source    : Closure_id.t option;
-    offset    : offset;
+    offset    : Offset.t;
     applied   : Closure_id.t;
   }
 
@@ -32,10 +42,6 @@ let equal a b =
   | Enter_decl a, Enter_decl b -> enter_decl_equal a b
   | At_call_site a, At_call_site b -> at_call_site_equal a b
   | _ , _ -> false
-
-let base_offset = 0
-
-let inc offset = offset + 1
 
 let enter_decl ~source ~closure = Enter_decl { source; closure }
 
@@ -74,7 +80,7 @@ let offset_of_sexp sexp =
     Misc.fatal_errorf "Cannot parse %a as an offset"
       Sexp.print_mach sexp
 
-let to_sexp sexp =
+let sexp_of_t sexp =
   let open Sexp in
   match sexp with
   | Enter_decl enter_decl ->
@@ -91,7 +97,7 @@ let to_sexp sexp =
       closure_id_to_sexp applied
     ]
 
-let of_sexp sexp =
+let t_of_sexp sexp =
   let open Sexp in
   match sexp with
   | List (Atom "Enter_decl" :: source :: closure :: []) ->
