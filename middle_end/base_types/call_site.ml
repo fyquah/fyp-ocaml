@@ -3,6 +3,13 @@
 module Offset = struct
   type t = int
 
+  let sexp_of_t t = Sexp.Atom (string_of_int t)
+
+  let t_of_sexp sexp =
+    match sexp with
+    | Sexp.Atom a -> int_of_string a
+    | _ -> raise (Sexp.Parse_error "Cannot parse offset")
+
   let base = 0
 
   let inc t = t + 1
