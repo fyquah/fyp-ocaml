@@ -4,8 +4,8 @@ let main() =
   let filename = Sys.argv.(1) in
   let ic = open_in filename in
   let ts = Data_collector.load_from_channel ic in
+  let ppf = Format.formatter_of_out_channel stdout in
   List.iter (fun t ->
-      let ppf = Format.formatter_of_out_channel stdout in
 
       if t.Data_collector.decision then begin
         Format.fprintf ppf "=> YES - "
