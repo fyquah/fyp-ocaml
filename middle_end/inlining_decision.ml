@@ -33,6 +33,34 @@ type 'b good_idea =
   | Try_it
   | Don't_try_it of 'b
 
+let extract_features
+    ~(closure_id : Closure_id.t)
+    ~(env : E.t)
+    ~(function_decl : Flambda.function_declaration) =
+  let is_annonymous =
+    Format.sprintf "%a" Closure_id.print
+    |> String.index_opt "anon-fn"
+    |> function
+      | None -> false
+      | Some _ -> true
+  in
+  let init =
+    Feature_extractor.empty
+      ~is_a_functor:function_decl.is_a_functor
+      ~is_recursive
+      ~is_annonymous
+      ~indirect_call
+      ~in_imperative_loop
+      ~in_conditional_expression
+      ~bound_vars_in_scope
+      ~inlining_depth: env.inside_branch
+      ~closure_depth: env.closure_depth
+      ~in_recursive_function
+      ~original_function_size
+      ~original_bound_vars
+  in
+;;
+
 let inline env r ~call_site ~lhs_of_application
     ~(function_decls : Flambda.function_declarations)
     ~closure_id_being_applied ~(function_decl : Flambda.function_declaration)

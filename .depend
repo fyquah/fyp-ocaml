@@ -1272,8 +1272,8 @@ middle_end/data_collector.cmo : sexp/sexp_file.cmi sexp/sexp.cmi \
 middle_end/data_collector.cmx : sexp/sexp_file.cmx sexp/sexp.cmx \
     utils/helper.cmx middle_end/base_types/closure_id.cmx \
     middle_end/base_types/call_site.cmx middle_end/data_collector.cmi
-middle_end/data_collector.cmi : middle_end/base_types/closure_id.cmi \
-    middle_end/base_types/call_site.cmi
+middle_end/data_collector.cmi : sexp/sexp.cmi \
+    middle_end/base_types/closure_id.cmi middle_end/base_types/call_site.cmi
 middle_end/debuginfo.cmo : parsing/location.cmi middle_end/debuginfo.cmi
 middle_end/debuginfo.cmx : parsing/location.cmx middle_end/debuginfo.cmi
 middle_end/debuginfo.cmi : parsing/location.cmi
@@ -1299,6 +1299,9 @@ middle_end/extract_projections.cmx : middle_end/base_types/variable.cmx \
 middle_end/extract_projections.cmi : middle_end/base_types/variable.cmi \
     middle_end/projection.cmi middle_end/inline_and_simplify_aux.cmi \
     middle_end/flambda.cmi
+middle_end/feature_extractor.cmo : middle_end/feature_extractor.cmi
+middle_end/feature_extractor.cmx : middle_end/feature_extractor.cmi
+middle_end/feature_extractor.cmi :
 middle_end/find_recursive_functions.cmo : middle_end/base_types/variable.cmi \
     utils/strongly_connected_components.cmi middle_end/flambda_utils.cmi \
     middle_end/flambda.cmi middle_end/find_recursive_functions.cmi
