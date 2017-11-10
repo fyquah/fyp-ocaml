@@ -255,6 +255,7 @@ module Env : sig
     -> inline_inside:bool
     -> dbg:Debuginfo.t
     -> f:(t -> 'a)
+    -> lambda_size:int
     -> 'a
 
    (** If collecting inlining statistics, record an inlining decision for the
@@ -370,3 +371,5 @@ val prepare_to_simplify_closure
   -> parameter_approximations:Simple_value_approx.t Variable.Map.t
   -> set_of_closures_env:Env.t
   -> Env.t
+
+val count_bound_vars : Flambda.t -> int

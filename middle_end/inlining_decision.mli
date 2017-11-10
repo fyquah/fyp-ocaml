@@ -22,7 +22,8 @@
 (** Try to inline a full application of a known function, guided by various
     heuristics. *)
 val for_call_site
-   : env:Inline_and_simplify_aux.Env.t
+   : kind:Flambda.call_kind
+  -> env:Inline_and_simplify_aux.Env.t
   -> r:Inline_and_simplify_aux.Result.t
   -> function_decls:Flambda.function_declarations
   -> lhs_of_application:Variable.t

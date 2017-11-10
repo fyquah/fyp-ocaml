@@ -33,10 +33,13 @@ type 'b good_idea =
   | Try_it
   | Don't_try_it of 'b
 
+  (*
 let extract_features
+    ~(kind : Flambda.call_kind)
     ~(closure_id : Closure_id.t)
     ~(env : E.t)
-    ~(function_decl : Flambda.function_declaration) =
+    ~(function_decl : Flambda.function_declaration)
+    ~(function_decls : Flambda.function_declarations) =
   let is_annonymous =
     Format.sprintf "%a" Closure_id.print
     |> String.index_opt "anon-fn"
@@ -44,10 +47,23 @@ let extract_features
       | None -> false
       | Some _ -> true
   in
+  let indirect_call =
+    match kind with
+    | Indirect -> true
+    | Direct _ -> false
+  in
+  (* TODO: Change this to the correct thing *)
+  let in_imperative_loop = false in
+  let in_conditional_expression = false in
+
+  let inlining_depth = E.inlining_level env in
+  let original_function_size = 1 in
+  let original_bound_vars = 2 in
+
   let init =
     Feature_extractor.empty
       ~is_a_functor:function_decl.is_a_functor
-      ~is_recursive
+      ~is_recursive:(Variable.Map.length function_decls.funs > 1)
       ~is_annonymous
       ~indirect_call
       ~in_imperative_loop
@@ -59,9 +75,11 @@ let extract_features
       ~original_function_size
       ~original_bound_vars
   in
+  init
 ;;
+*)
 
-let inline env r ~call_site ~lhs_of_application
+let inline env r ~call_site ~lhs_of_application 
     ~(function_decls : Flambda.function_declarations)
     ~closure_id_being_applied ~(function_decl : Flambda.function_declaration)
     ~value_set_of_closures ~only_use_of_function ~original ~recursive
@@ -573,12 +591,13 @@ let specialise env r ~lhs_of_application
         Original decision
     end
 
-let for_call_site ~env ~r ~(function_decls : Flambda.function_declarations)
+let for_call_site ~kind ~env ~r ~(function_decls : Flambda.function_declarations)
       ~lhs_of_application ~closure_id_being_applied
       ~(function_decl : Flambda.function_declaration)
       ~(value_set_of_closures : Simple_value_approx.value_set_of_closures)
       ~args ~args_approxs ~dbg ~simplify ~inline_requested
       ~specialise_requested =
+  let (_  : Flambda.call_kind) = kind in
   let (call_site_offset, env) = E.next_call_site_offset env in
   let call_site =
     match E.current_function env with

@@ -32,8 +32,8 @@ type t =
     inlining_depth                   : int;
     closure_depth                    : int;
     in_recursive_function            : bool;
-    original_function_size           : int;
-    original_bound_vars              : int;
+    original_function_size           : int option;
+    original_bound_vars              : int option;
   }
 
 val empty
@@ -47,6 +47,6 @@ val empty
   -> inlining_depth: int
   -> closure_depth: int
   -> in_recursive_function: bool
-  -> original_function_size: int
-  -> original_bound_vars: int
+  -> original_function_size: int option
+  -> original_bound_vars: int option
   -> t

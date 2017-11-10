@@ -593,12 +593,14 @@ and simplify_set_of_closures original_env r
         ~free_vars ~specialised_args ~parameter_approximations
         ~set_of_closures_env
     in
+    let lambda_size = Inlining_cost.lambda_size function_decl.body in
     let body, r =
       E.enter_closure closure_env ~closure_id:(Closure_id.wrap fun_var)
         ~inline_inside:
           (Inlining_decision.should_inline_inside_declaration function_decl)
         ~dbg:function_decl.dbg
         ~f:(fun body_env -> simplify body_env r function_decl.body)
+        ~lambda_size
     in
     let inline : Lambda.inline_attribute =
       match function_decl.inline with
@@ -669,7 +671,7 @@ and simplify_set_of_closures original_env r
 
 and simplify_apply env r ~(apply : Flambda.apply) : Flambda.t * R.t =
   let {
-    Flambda. func = lhs_of_application; args; kind = _; dbg;
+    Flambda. func = lhs_of_application; args; kind; dbg;
     inline = inline_requested; specialise = specialise_requested;
   } = apply in
   let dbg = E.add_inlined_debuginfo env ~dbg in
@@ -745,12 +747,12 @@ and simplify_apply env r ~(apply : Flambda.apply) : Flambda.t * R.t =
           let arity = Flambda_utils.function_arity function_decl in
           let result, r =
             if nargs = arity then
-              simplify_full_application env r ~function_decls
+              simplify_full_application env r ~kind ~function_decls
                 ~lhs_of_application ~closure_id_being_applied ~function_decl
                 ~value_set_of_closures ~args ~args_approxs ~dbg
                 ~inline_requested ~specialise_requested
             else if nargs > arity then
-              simplify_over_application env r ~args ~args_approxs
+              simplify_over_application env r ~kind ~args ~args_approxs
                 ~function_decls ~lhs_of_application ~closure_id_being_applied
                 ~function_decl ~value_set_of_closures ~dbg ~inline_requested
                 ~specialise_requested
@@ -769,10 +771,10 @@ and simplify_apply env r ~(apply : Flambda.apply) : Flambda.t * R.t =
               inline = inline_requested; specialise = specialise_requested; }),
             ret r (A.value_unknown Other)))
 
-and simplify_full_application env r ~function_decls ~lhs_of_application
+and simplify_full_application env r ~kind ~function_decls ~lhs_of_application
       ~closure_id_being_applied ~function_decl ~value_set_of_closures ~args
       ~args_approxs ~dbg ~inline_requested ~specialise_requested =
-  Inlining_decision.for_call_site ~env ~r ~function_decls
+  Inlining_decision.for_call_site ~kind ~env ~r ~function_decls
     ~lhs_of_application ~closure_id_being_applied ~function_decl
     ~value_set_of_closures ~args ~args_approxs ~dbg ~simplify
     ~inline_requested ~specialise_requested
@@ -842,7 +844,7 @@ and simplify_partial_application env r ~lhs_of_application
   in
   simplify env r with_known_args
 
-and simplify_over_application env r ~args ~args_approxs ~function_decls
+and simplify_over_application env r ~kind ~args ~args_approxs ~function_decls
       ~lhs_of_application ~closure_id_being_applied ~function_decl
       ~value_set_of_closures ~dbg ~inline_requested ~specialise_requested =
   let arity = Flambda_utils.function_arity function_decl in
@@ -855,7 +857,7 @@ and simplify_over_application env r ~args ~args_approxs ~function_decls
     Misc.Stdlib.List.split_at arity args_approxs
   in
   let expr, r =
-    simplify_full_application env r ~function_decls ~lhs_of_application
+    simplify_full_application env r ~kind ~function_decls ~lhs_of_application
       ~closure_id_being_applied ~function_decl ~value_set_of_closures
       ~args:full_app_args ~args_approxs:full_app_approxs ~dbg
       ~inline_requested ~specialise_requested
@@ -1410,12 +1412,14 @@ and duplicate_function ~env ~(set_of_closures : Flambda.set_of_closures)
       ~set_of_closures_env
   in
   let body, _r =
+    let lambda_size = Inlining_cost.lambda_size function_decl.body in
     E.enter_closure closure_env
       ~closure_id:(Closure_id.wrap fun_var)
       ~inline_inside:false
       ~dbg:function_decl.dbg
       ~f:(fun body_env ->
         simplify body_env (R.create ()) function_decl.body)
+      ~lambda_size
   in
   let function_decl =
     Flambda.create_function_declaration ~params:function_decl.params
