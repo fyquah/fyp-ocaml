@@ -368,6 +368,7 @@ module Env = struct
     in
     { t with inlining_counts }
 
+  let closure_depth env = env.closure_depth
   let inlining_level t = t.inlining_level
   let freshening t = t.freshening
   let never_inline t = t.never_inline || t.never_inline_outside_closures
@@ -458,6 +459,9 @@ module Env = struct
 
   let add_inlined_debuginfo t ~dbg =
     Debuginfo.concat t.inlined_debuginfo dbg
+
+  let original_function_size_stack t = t.original_function_size_stack
+  let original_bound_vars_stack t = t.original_bound_vars_stack
 end
 
 let initial_inlining_threshold ~round : Inlining_cost.Threshold.t =

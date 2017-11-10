@@ -33,7 +33,23 @@ type 'b good_idea =
   | Try_it
   | Don't_try_it of 'b
 
-  (*
+let rec find_substring haystack needle =
+  if String.length haystack < String.length needle then
+    false
+  else if
+    String.equal needle (String.sub haystack 0 (String.length needle))
+  then
+    true
+  else
+    find_substring (String.sub haystack 1 (String.length haystack - 1))
+      needle
+;;
+
+let hd_opt a =
+  match a with
+  | [] -> None
+  | hd :: _ -> Some hd
+
 let extract_features
     ~(kind : Flambda.call_kind)
     ~(closure_id : Closure_id.t)
@@ -41,45 +57,55 @@ let extract_features
     ~(function_decl : Flambda.function_declaration)
     ~(function_decls : Flambda.function_declarations) =
   let is_annonymous =
-    Format.sprintf "%a" Closure_id.print
-    |> String.index_opt "anon-fn"
-    |> function
-      | None -> false
-      | Some _ -> true
+    find_substring
+      (Format.asprintf "%a" Closure_id.print closure_id)
+      "anon-fn"
   in
   let indirect_call =
     match kind with
     | Indirect -> true
     | Direct _ -> false
   in
+
   (* TODO: Change this to the correct thing *)
   let in_imperative_loop = false in
   let in_conditional_expression = false in
+  let in_recursive_function = false in
+  let bound_vars_in_scope = 1 in
 
-  let inlining_depth = E.inlining_level env in
-  let original_function_size = 1 in
-  let original_bound_vars = 2 in
-
+  let original_function_size =
+    hd_opt (E.original_function_size_stack env)
+  in
+  let original_bound_vars = hd_opt (E.original_bound_vars_stack env) in
   let init =
     Feature_extractor.empty
       ~is_a_functor:function_decl.is_a_functor
-      ~is_recursive:(Variable.Map.length function_decls.funs > 1)
+      ~is_recursive:(Variable.Map.cardinal function_decls.funs > 1)
       ~is_annonymous
       ~indirect_call
       ~in_imperative_loop
       ~in_conditional_expression
       ~bound_vars_in_scope
-      ~inlining_depth: env.inside_branch
-      ~closure_depth: env.closure_depth
+      ~inlining_depth:(E.inlining_level env)
+      ~closure_depth:(E.closure_depth env)
       ~in_recursive_function
       ~original_function_size
       ~original_bound_vars
   in
-  init
+  let (init : Feature_extractor.t ref) = ref init in
+  Flambda_iterators.iter
+    (fun (t : Flambda.t) ->
+       let cur = !init in
+       match t with
+       | Let 
+       | String_switch (_, _, _) ->
+         init := { cur with string_switch = cur.string_switch + 1 }
+    )
+    (fun (named : Flambda.named) -> )
+    function_decl
 ;;
-*)
 
-let inline env r ~call_site ~lhs_of_application 
+let inline env r ~call_site ~lhs_of_application
     ~(function_decls : Flambda.function_declarations)
     ~closure_id_being_applied ~(function_decl : Flambda.function_declaration)
     ~value_set_of_closures ~only_use_of_function ~original ~recursive

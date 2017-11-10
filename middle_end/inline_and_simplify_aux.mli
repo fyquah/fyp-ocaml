@@ -181,6 +181,8 @@ module Env : sig
       environment. *)
   val never_inline : t -> bool
 
+  val closure_depth : t -> int
+
   val inlining_level : t -> int
 
   (** Mark that this environment is used to rewrite code for inlining. This is
@@ -277,6 +279,10 @@ module Env : sig
 
   (** Appends the locations of inlined call-sites to the [~dbg] argument *)
   val add_inlined_debuginfo : t -> dbg:Debuginfo.t -> Debuginfo.t
+
+  val original_function_size_stack : t -> int list
+
+  val original_bound_vars_stack : t -> int list
 end
 
 module Result : sig
