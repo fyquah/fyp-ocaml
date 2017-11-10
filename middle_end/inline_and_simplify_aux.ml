@@ -48,6 +48,8 @@ module Env = struct
 
     (* For feature extraction *)
     call_context_stack: Feature_extractor.call_context list;
+    original_function_size_stack : int list;  (* Note : doesn't include size of inlined stuff *)
+    original_bound_vars_stack : int list;
   }
 
   let add_context t ctx = { t with call_context_stack = ctx :: t.call_context_stack }
@@ -77,6 +79,8 @@ module Env = struct
         Inlining_stats.Closure_stack.create ();
       inlined_debuginfo = Debuginfo.none;
       call_context_stack = [];
+      original_function_size_stack = [];
+      original_bound_vars_stack = [];
     }
 
   let inlining_stack t = t.inlining_stack
@@ -368,6 +372,7 @@ module Env = struct
     in
     { t with inlining_counts }
 
+  let closure_depth env = env.closure_depth
   let inlining_level t = t.inlining_level
   let freshening t = t.freshening
   let never_inline t = t.never_inline || t.never_inline_outside_closures
@@ -420,7 +425,7 @@ module Env = struct
             t.inlining_stats_closure_stack ~closure_ids;
       }
 
-  let enter_closure t ~closure_id ~inline_inside ~dbg ~f =
+  let enter_closure t ~closure_id ~inline_inside ~dbg ~f ~lambda_size ~bound_vars =
     let t =
       if inline_inside && not t.never_inline_inside_closures then t
       else set_never_inline t
@@ -443,7 +448,13 @@ module Env = struct
       in
       { t with inlining_stack; call_context_stack; }
     in
-    let t = { t with current_function = Some closure_id } in
+    let original_function_size_stack =
+      lambda_size :: t.original_function_size_stack
+    in
+    let original_bound_vars_stack =
+      bound_vars :: t.original_bound_vars_stack
+    in
+    let t = { t with current_function = Some closure_id; original_function_size_stack; original_bound_vars_stack } in
     f (note_entering_closure t ~closure_id ~dbg)
 
   let record_decision t decision =
@@ -455,6 +466,9 @@ module Env = struct
 
   let add_inlined_debuginfo t ~dbg =
     Debuginfo.concat t.inlined_debuginfo dbg
+
+  let original_function_size_stack t = t.original_function_size_stack
+  let original_bound_vars_stack t = t.original_bound_vars_stack
 end
 
 let initial_inlining_threshold ~round : Inlining_cost.Threshold.t =
@@ -743,3 +757,16 @@ let prepare_to_simplify_closure ~(function_decl : Flambda.function_declaration)
   in
   add_projections ~closure_env ~which_variables:free_vars
     ~map:(fun (spec_to, _approx) -> spec_to)
+
+let count_bound_vars t =
+  let acc = ref 0 in
+  Flambda_iterators.iter
+    (fun (t : Flambda.t) ->
+      match t with
+      | Let _
+      | Let_mutable _ -> acc := !acc + 1
+      | Let_rec (stuff, _) -> acc := !acc + List.length stuff
+      | _ -> ())
+    (fun (_named : Flambda.named) -> ())
+    t;
+  !acc

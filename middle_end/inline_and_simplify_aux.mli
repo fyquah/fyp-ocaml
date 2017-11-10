@@ -181,6 +181,8 @@ module Env : sig
       environment. *)
   val never_inline : t -> bool
 
+  val closure_depth : t -> int
+
   val inlining_level : t -> int
 
   (** Mark that this environment is used to rewrite code for inlining. This is
@@ -255,6 +257,8 @@ module Env : sig
     -> inline_inside:bool
     -> dbg:Debuginfo.t
     -> f:(t -> 'a)
+    -> lambda_size:int
+    -> bound_vars:int
     -> 'a
 
    (** If collecting inlining statistics, record an inlining decision for the
@@ -277,6 +281,10 @@ module Env : sig
   val add_inlined_debuginfo : t -> dbg:Debuginfo.t -> Debuginfo.t
 
   val add_context : t -> Feature_extractor.call_context -> t
+
+  val original_function_size_stack : t -> int list
+
+  val original_bound_vars_stack : t -> int list
 end
 
 module Result : sig
@@ -372,3 +380,5 @@ val prepare_to_simplify_closure
   -> parameter_approximations:Simple_value_approx.t Variable.Map.t
   -> set_of_closures_env:Env.t
   -> Env.t
+
+val count_bound_vars : Flambda.t -> int
