@@ -45,7 +45,12 @@ module Env = struct
     closure_depth : int;
     inlining_stats_closure_stack : Inlining_stats.Closure_stack.t;
     inlined_debuginfo : Debuginfo.t;
+
+    (* For feature extraction *)
+    call_context_stack: Feature_extractor.call_context list;
   }
+
+  let add_context t ctx = { t with call_context_stack = ctx :: t.call_context_stack }
 
   let create ~never_inline ~backend ~round ~current_function =
     { backend;
@@ -71,6 +76,7 @@ module Env = struct
       inlining_stats_closure_stack =
         Inlining_stats.Closure_stack.create ();
       inlined_debuginfo = Debuginfo.none;
+      call_context_stack = [];
     }
 
   let inlining_stack t = t.inlining_stack
@@ -432,7 +438,10 @@ module Env = struct
       let inlining_stack =
         Call_site.enter_decl ~closure:closure_id ~source :: t.inlining_stack
       in
-      { t with inlining_stack }
+      let call_context_stack =
+        Feature_extractor.In_function_declaration :: t.call_context_stack
+      in
+      { t with inlining_stack; call_context_stack; }
     in
     let t = { t with current_function = Some closure_id } in
     f (note_entering_closure t ~closure_id ~dbg)

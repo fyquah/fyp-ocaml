@@ -1159,12 +1159,14 @@ and simplify env r (tree : Flambda.t) : Flambda.t * R.t =
       match body with
       | Let { var; defining_expr = def; body; _ }
           when not (Flambda_utils.might_raise_static_exn def i) ->
-        simplify env r
+        simplify (E.add_context env Feature_extractor.In_catch_block) r
           (Flambda.create_let var def (Static_catch (i, vars, body, handler)))
       | _ ->
         let i, sb = Freshening.add_static_exception (E.freshening env) i in
         let env = E.set_freshening env sb in
-        let body, r = simplify env r body in
+        let body, r =
+          simplify (E.add_context env Feature_extractor.In_catch_block) r body
+        in
         (* CR-soon mshinwell: for robustness, R.used_static_exceptions should
            maybe be removed. *)
         if not (Static_exception.Set.mem i (R.used_static_exceptions r)) then
@@ -1197,17 +1199,24 @@ and simplify env r (tree : Flambda.t) : Flambda.t * R.t =
         end
     end
   | Try_with (body, id, handler) ->
-    let body, r = simplify env r body in
+    let body, r =
+      simplify (E.add_context env Feature_extractor.In_try_block) r body
+    in
     let id, sb = Freshening.add_variable (E.freshening env) id in
     let env = E.add (E.set_freshening env sb) id (A.value_unknown Other) in
     let env = E.inside_branch env in
-    let handler, r = simplify env r handler in
+    let handler, r =
+      simplify (E.add_context env Feature_extractor.In_catch_block) r handler
+    in
     Try_with (body, id, handler), ret r (A.value_unknown Other)
   | If_then_else (arg, ifso, ifnot) ->
     (* When arg is the constant false or true (or something considered
        as true), we can drop the if and replace it by a sequence.
        if arg is not effectful we can also drop it. *)
     simplify_free_variable env arg ~f:(fun env arg arg_approx ->
+      let simplify env r t =
+        simplify (E.add_context env Feature_extractor.Conditional_branch) r t
+      in
       begin match arg_approx.descr with
       | Value_constptr 0 | Value_int 0 ->  (* Constant [false]: keep [ifnot] *)
         let ifnot, r = simplify env r ifnot in
@@ -1226,7 +1235,7 @@ and simplify env r (tree : Flambda.t) : Flambda.t * R.t =
       end)
   | While (cond, body) ->
     let cond, r = simplify env r cond in
-    let body, r = simplify env r body in
+    let body, r = simplify (E.add_context env Feature_extractor.Imperative_loop) r body in
     While (cond, body), ret r (A.value_unknown Other)
   | Send { kind; meth; obj; args; dbg; } ->
     let dbg = E.add_inlined_debuginfo env ~dbg in
@@ -1245,7 +1254,9 @@ and simplify env r (tree : Flambda.t) : Flambda.t * R.t =
           E.add (E.set_freshening env sb) bound_var
             (A.value_unknown Other)
         in
-        let body, r = simplify env r body in
+        let body, r =
+          simplify (E.add_context env Feature_extractor.Imperative_loop) r body
+        in
         For { bound_var; from_value; to_value; direction; body; },
           ret r (A.value_unknown Other)))
   | Assign { being_assigned; new_value; } ->
@@ -1303,28 +1314,38 @@ and simplify env r (tree : Flambda.t) : Flambda.t * R.t =
                 | Float f -> ...]
          *)
           Proved_unreachable, ret r A.value_bottom
-        | [_, branch], [], None
-        | [], [_, branch], None
+        | [_, branch], [], None ->
+          let lam, r = simplify (E.add_context env Feature_extractor.Switch_int_branch) r branch in
+          lam, R.map_benefit r B.remove_branch
+
+        | [], [_, branch], None ->
+          let lam, r = simplify (E.add_context env Feature_extractor.Switch_block_branch) r branch in
+          lam, R.map_benefit r B.remove_branch
+
         | [], [], Some branch ->
-          let lam, r = simplify env r branch in
+          let lam, r = simplify (E.add_context env Feature_extractor.Switch_failaction_branch) r branch in
           lam, R.map_benefit r B.remove_branch
         | _ ->
           let env = E.inside_branch env in
-          let f (i, v) (acc, r) =
+          let f ~ctx (i, v) (acc, r) =
             let approx = R.approx r in
-            let lam, r = simplify env r v in
+            let lam, r = simplify (E.add_context env ctx) r v in
             (i, lam)::acc,
             R.meet_approx r env approx
           in
           let r = R.set_approx r A.value_bottom in
-          let consts, r = List.fold_right f consts ([], r) in
-          let blocks, r = List.fold_right f blocks ([], r) in
+          let consts, r =
+            List.fold_right (f ~ctx:Feature_extractor.Switch_int_branch) consts ([], r)
+          in
+          let blocks, r =
+            List.fold_right (f ~ctx:Feature_extractor.Switch_block_branch) blocks ([], r)
+          in
           let failaction, r =
             match sw.failaction with
             | None -> None, r
             | Some l ->
               let approx = R.approx r in
-              let l, r = simplify env r l in
+              let l, r = simplify (E.add_context env Feature_extractor.Switch_failaction_branch) r l in
               Some l,
               R.meet_approx r env approx
           in
@@ -1339,7 +1360,7 @@ and simplify env r (tree : Flambda.t) : Flambda.t * R.t =
         let sw, r =
           List.fold_right (fun (str, lam) (sw, r) ->
               let approx = R.approx r in
-              let lam, r = simplify env r lam in
+              let lam, r = simplify (E.add_context env Feature_extractor.String_switch_branch) r lam in
               (str, lam)::sw,
                 R.meet_approx r env approx)
             sw

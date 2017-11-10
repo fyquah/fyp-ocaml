@@ -1,5 +1,17 @@
 [@@@ocaml.warning "+a-4-9-30-40-41-42"]
 
+type call_context =
+  | Conditional_branch
+  | String_switch_branch
+  | Switch_int_branch
+  | Switch_block_branch
+  | Switch_failaction_branch
+  | Imperative_loop
+  | In_try_block
+  | In_catch_block
+  | Inlined_function
+  | In_function_declaration
+
 type t =
   { (* callee features *)
     bound_vars_to_symbol             : int;
@@ -22,11 +34,9 @@ type t =
     string_switch                    : int;
 
     (* caller features *)
-    indirect_call                    : bool;
-    in_imperative_loop               : bool;
-    in_conditional_expression        : bool;
-    (* refers to ocaml [while] or [for] loops *)
-    bound_vars_in_scope              : int;
+    call_context_stack               : call_context list;
+    direct_call                      : bool;
+    recursive_call                   : bool;
 
     (* environment features -- this is same for all siblings *)
     inlining_depth                   : int;
@@ -34,19 +44,20 @@ type t =
     in_recursive_function            : bool;
     original_function_size           : int;
     original_bound_vars              : int;
+    flambda_round                    : int;
   }
 
 val empty
    : is_a_functor: bool
   -> is_recursive : bool
   -> is_annonymous: bool
-  -> indirect_call: bool
-  -> in_imperative_loop: bool
-  -> in_conditional_expression: bool
-  -> bound_vars_in_scope: int
+  -> call_context_stack: call_context list
+  -> direct_call: bool
+  -> recursive_call: bool
   -> inlining_depth: int
   -> closure_depth: int
   -> in_recursive_function: bool
   -> original_function_size: int
   -> original_bound_vars: int
+  -> flambda_round: int
   -> t

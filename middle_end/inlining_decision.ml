@@ -33,6 +33,7 @@ type 'b good_idea =
   | Try_it
   | Don't_try_it of 'b
 
+  (*
 let extract_features
     ~(closure_id : Closure_id.t)
     ~(env : E.t)
@@ -59,7 +60,13 @@ let extract_features
       ~original_function_size
       ~original_bound_vars
   in
+  let state = ref init in
+  Flambda_iterators.iter
+    (fun t -> )
+    (fun named -> )
+    function_declaration.body
 ;;
+*)
 
 let inline env r ~call_site ~lhs_of_application
     ~(function_decls : Flambda.function_declarations)

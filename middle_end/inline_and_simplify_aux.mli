@@ -275,6 +275,8 @@ module Env : sig
 
   (** Appends the locations of inlined call-sites to the [~dbg] argument *)
   val add_inlined_debuginfo : t -> dbg:Debuginfo.t -> Debuginfo.t
+
+  val add_context : t -> Feature_extractor.call_context -> t
 end
 
 module Result : sig
