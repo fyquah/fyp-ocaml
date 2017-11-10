@@ -594,6 +594,9 @@ and simplify_set_of_closures original_env r
         ~set_of_closures_env
     in
     let lambda_size = Inlining_cost.lambda_size function_decl.body in
+    let bound_vars =
+      Inline_and_simplify_aux.count_bound_vars function_decl.body
+    in
     let body, r =
       E.enter_closure closure_env ~closure_id:(Closure_id.wrap fun_var)
         ~inline_inside:
@@ -601,6 +604,7 @@ and simplify_set_of_closures original_env r
         ~dbg:function_decl.dbg
         ~f:(fun body_env -> simplify body_env r function_decl.body)
         ~lambda_size
+        ~bound_vars
     in
     let inline : Lambda.inline_attribute =
       match function_decl.inline with
@@ -1413,6 +1417,9 @@ and duplicate_function ~env ~(set_of_closures : Flambda.set_of_closures)
   in
   let body, _r =
     let lambda_size = Inlining_cost.lambda_size function_decl.body in
+    let bound_vars =
+      Inline_and_simplify_aux.count_bound_vars function_decl.body
+    in
     E.enter_closure closure_env
       ~closure_id:(Closure_id.wrap fun_var)
       ~inline_inside:false
@@ -1420,6 +1427,7 @@ and duplicate_function ~env ~(set_of_closures : Flambda.set_of_closures)
       ~f:(fun body_env ->
         simplify body_env (R.create ()) function_decl.body)
       ~lambda_size
+      ~bound_vars
   in
   let function_decl =
     Flambda.create_function_declaration ~params:function_decl.params

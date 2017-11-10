@@ -256,6 +256,7 @@ module Env : sig
     -> dbg:Debuginfo.t
     -> f:(t -> 'a)
     -> lambda_size:int
+    -> bound_vars:int
     -> 'a
 
    (** If collecting inlining statistics, record an inlining decision for the

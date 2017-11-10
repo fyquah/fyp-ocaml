@@ -420,7 +420,7 @@ module Env = struct
             t.inlining_stats_closure_stack ~closure_ids;
       }
 
-  let enter_closure t ~closure_id ~inline_inside ~dbg ~f ~lambda_size =
+  let enter_closure t ~closure_id ~inline_inside ~dbg ~f ~lambda_size ~bound_vars =
     let t =
       if inline_inside && not t.never_inline_inside_closures then t
       else set_never_inline t
@@ -443,7 +443,10 @@ module Env = struct
     let original_function_size_stack =
       lambda_size :: t.original_function_size_stack
     in
-    let t = { t with current_function = Some closure_id; original_function_size_stack } in
+    let original_bound_vars_stack =
+      bound_vars :: t.original_bound_vars_stack
+    in
+    let t = { t with current_function = Some closure_id; original_function_size_stack; original_bound_vars_stack } in
     f (note_entering_closure t ~closure_id ~dbg)
 
   let record_decision t decision =
