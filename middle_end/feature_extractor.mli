@@ -14,6 +14,7 @@ type call_context =
 
 type t =
   { (* callee features *)
+    params                           : int;
     bound_vars_to_symbol             : int;
     assign                           : int;
     bound_vars_to_mutable            : int;
@@ -49,7 +50,8 @@ type t =
   }
 
 val empty
-   : is_a_functor: bool
+   : params: int
+  -> is_a_functor: bool
   -> is_recursive : bool
   -> is_annonymous: bool
   -> call_context_stack: call_context list
@@ -62,3 +64,5 @@ val empty
   -> original_bound_vars: int option
   -> flambda_round: int
   -> t
+
+val mined_features : t list ref

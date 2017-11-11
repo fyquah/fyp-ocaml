@@ -14,6 +14,7 @@ type call_context =
 
 type t =
   { (* callee features *)
+    params                           : int;
     bound_vars_to_symbol             : int;
     assign                           : int;
     bound_vars_to_mutable            : int;
@@ -50,7 +51,7 @@ type t =
 
 let empty
     (* callee information *)
-    ~is_a_functor ~is_recursive ~is_annonymous
+    ~params ~is_a_functor ~is_recursive ~is_annonymous
 
     (* caller information *)
     ~call_context_stack ~direct_call ~recursive_call
@@ -60,6 +61,7 @@ let empty
     ~original_function_size ~original_bound_vars ~flambda_round
   =
   { (* callee features *)
+    params                           ;
     bound_vars_to_symbol             = 0;
     assign                           = 0;
     bound_vars_to_mutable            = 0;
@@ -93,3 +95,5 @@ let empty
     original_bound_vars              ;
     flambda_round                    ;
   }
+
+let (mined_features : t list ref) = ref []
