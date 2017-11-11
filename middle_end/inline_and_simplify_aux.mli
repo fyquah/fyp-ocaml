@@ -282,6 +282,8 @@ module Env : sig
 
   val add_context : t -> Feature_extractor.call_context -> t
 
+  val call_context_stack : t -> Feature_extractor.call_context list
+
   val original_function_size_stack : t -> int list
 
   val original_bound_vars_stack : t -> int list

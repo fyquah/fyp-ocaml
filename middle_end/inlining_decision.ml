@@ -50,7 +50,7 @@ let hd_opt a =
   | [] -> None
   | hd :: _ -> Some hd
 
-let extract_features
+let _extract_features
     ~(kind : Flambda.call_kind)
     ~(closure_id : Closure_id.t)
     ~(env : E.t)
@@ -61,48 +61,52 @@ let extract_features
       (Format.asprintf "%a" Closure_id.print closure_id)
       "anon-fn"
   in
-  let indirect_call =
+  let direct_call =
     match kind with
     | Indirect -> true
     | Direct _ -> false
   in
-
-  (* TODO: Change this to the correct thing *)
-  let in_imperative_loop = false in
-  let in_conditional_expression = false in
-  let in_recursive_function = false in
-  let bound_vars_in_scope = 1 in
-
+  let in_recursive_function =
+    match
+      E.actively_unrolling env function_decls.set_of_closures_origin
+    with
+    | None -> false
+    | Some _ -> true
+  in
   let original_function_size =
     hd_opt (E.original_function_size_stack env)
   in
+  let recursive_call =
+    match E.inlining_stack env with
+    | [] -> false
+    | Call_site.Enter_decl { closure = current; _ } :: _
+    | Call_site.At_call_site { applied = current ; _ } :: _ ->
+      Closure_id.equal closure_id current
+  in
+  let call_context_stack = E.call_context_stack env in
   let original_bound_vars = hd_opt (E.original_bound_vars_stack env) in
+  let flambda_round = 1 in
   let init =
     Feature_extractor.empty
       ~is_a_functor:function_decl.is_a_functor
       ~is_recursive:(Variable.Map.cardinal function_decls.funs > 1)
       ~is_annonymous
-      ~indirect_call
-      ~in_imperative_loop
-      ~in_conditional_expression
-      ~bound_vars_in_scope
+      ~call_context_stack
+      ~direct_call
+      ~recursive_call
       ~inlining_depth:(E.inlining_level env)
-      ~closure_depth:(E.closure_depth env)
       ~in_recursive_function
       ~original_function_size
       ~original_bound_vars
+      ~flambda_round
+      ~closure_depth:(E.closure_depth env)
   in
   let (init : Feature_extractor.t ref) = ref init in
   Flambda_iterators.iter
-    (fun (t : Flambda.t) ->
-       let cur = !init in
-       match t with
-       | Let 
-       | String_switch (_, _, _) ->
-         init := { cur with string_switch = cur.string_switch + 1 }
-    )
-    (fun (named : Flambda.named) -> )
-    function_decl
+    (fun (_t : Flambda.t) -> ())
+    (fun (_named : Flambda.named) -> ())
+    function_decl.body;
+  !init
 ;;
 
 let inline env r ~call_site ~lhs_of_application

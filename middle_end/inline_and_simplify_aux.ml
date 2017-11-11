@@ -54,6 +54,8 @@ module Env = struct
 
   let add_context t ctx = { t with call_context_stack = ctx :: t.call_context_stack }
 
+  let call_context_stack t = t.call_context_stack
+
   let create ~never_inline ~backend ~round ~current_function =
     { backend;
       call_site_offset = ref Call_site.Offset.base;
