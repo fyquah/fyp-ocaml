@@ -180,13 +180,33 @@ let middle_end ppf ~source_provenance ~prefixname ~backend
     check flam;
     (* CR-someday mshinwell: add -d... option for this *)
     (* dump_function_sizes flam ~backend; *)
-    let suffix =
-      match !Clflags.dump_features with
-      | None -> "flambda.features"
-      | Some suffix -> suffix
-    in
-    let file = Printf.sprintf "%s.%s" prefixname suffix in
-    let oc = open_out_bin file in
-    output_value oc !Feature_extractor.mined_features;
-    close_out oc;
+    begin try
+      let data_collection_path =
+        Printf.sprintf "%s/fyp/data-collected" (Sys.getenv "HOME")
+      in
+      if Sys.is_directory data_collection_path then begin
+        let directory =
+          match !Clflags.dump_features with
+          | None ->
+            let cwd = Sys.getcwd () in
+            let output_dir =
+              Printf.sprintf "%s/%s" data_collection_path cwd
+            in
+            let exit_code =
+              Sys.command (Printf.sprintf "mkdir -p %s" output_dir)
+            in
+            ignore exit_code;
+            output_dir
+          | Some directory -> directory
+        in
+        let file =
+          Printf.sprintf "%s/%s.flambda.features" directory prefixname
+        in
+        let oc = open_out_bin file in
+        output_value oc !Feature_extractor.mined_features;
+        close_out oc
+      end
+    with
+    | Sys_error _ -> ()
+    end;
     flam) ();
