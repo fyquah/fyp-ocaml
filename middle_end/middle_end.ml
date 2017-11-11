@@ -180,4 +180,11 @@ let middle_end ppf ~source_provenance ~prefixname ~backend
     check flam;
     (* CR-someday mshinwell: add -d... option for this *)
     (* dump_function_sizes flam ~backend; *)
+    begin match !Clflags.dump_features with
+    | None -> ()
+    | Some file ->
+      let oc = open_out_bin file in
+      output_value oc !Feature_extractor.mined_features;
+      close_out oc
+    end;
     flam) ();

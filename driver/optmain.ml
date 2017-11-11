@@ -131,6 +131,7 @@ module Options = Main_args.Make_optcomp_options (struct
   let _no_unbox_free_vars_of_closures = clear unbox_free_vars_of_closures
   let _no_unbox_specialised_args = clear unbox_specialised_args
   let _perf_profile s = perf_profile := Some s
+  let _dump_features s = dump_features := Some s
   let _inlining_overrides s = inlining_overrides := Some s
   let _o s = output_name := Some s
   (* CR-someday mshinwell: should stop e.g. -O2 -classic-inlining

@@ -155,6 +155,7 @@ module Options = Main_args.Make_opttop_options (struct
   let _no_unbox_specialised_args = clear unbox_specialised_args
   let _o s = output_name := Some s
   let _perf_profile s = perf_profile := Some s
+  let _dump_features s = dump_features := Some s
   let _inlining_overides s = inlining_overrides := Some s
   let _o2 () =
     default_simplify_rounds := 2;

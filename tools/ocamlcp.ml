@@ -82,6 +82,7 @@ module Options = Main_args.Make_bytecomp_options (struct
   let _nostdlib = option "-nostdlib"
   let _o s = option_with_arg "-o" s
   let _perf_profile s = option_with_arg "-perf-profile" s
+  let _dump_features s = option_with_arg "-dump-features" s
   let _inlining_overrides s = option_with_arg "-inlining-overrides" s
   let _opaque = option "-opaque"
   let _open s = option_with_arg "-open" s

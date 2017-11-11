@@ -70,6 +70,7 @@ val dllibs : string list ref
 val compile_only : bool ref
 val inlining_overrides : string option ref
 val perf_profile : string option ref
+val dump_features : string option ref
 val output_name : string option ref
 val include_dirs : string list ref
 val no_std_include : bool ref
