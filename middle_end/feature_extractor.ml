@@ -17,6 +17,7 @@ type t =
     bound_vars_to_symbol             : int;
     assign                           : int;
     bound_vars_to_mutable            : int;
+    bound_vars                       : int;
     free_vars                        : int;
     free_symbols                     : int;
     set_of_closures                  : int;
@@ -62,6 +63,7 @@ let empty
     bound_vars_to_symbol             = 0;
     assign                           = 0;
     bound_vars_to_mutable            = 0;
+    bound_vars                       = 0;
     free_vars                        = 0;
     free_symbols                     = 0;
     set_of_closures                  = 0;

@@ -17,6 +17,7 @@ type t =
     bound_vars_to_symbol             : int;
     assign                           : int;
     bound_vars_to_mutable            : int;
+    bound_vars                       : int;
     free_vars                        : int;
     free_symbols                     : int;
     set_of_closures                  : int;

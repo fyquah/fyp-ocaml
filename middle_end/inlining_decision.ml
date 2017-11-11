@@ -101,13 +101,85 @@ let _extract_features
       ~flambda_round
       ~closure_depth:(E.closure_depth env)
   in
-  let (init : Feature_extractor.t ref) = ref init in
+  let init =
+    let params = function_decl.params in
+    let free_vars =
+      Variable.Set.cardinal function_decl.free_variables - List.length params
+    in
+    let free_symbols = Symbol.Set.cardinal function_decl.free_symbols in
+    { init with free_vars; free_symbols; } 
+  in
+  let (state : Feature_extractor.t ref) = ref init in
   (* TODO(fyquah): Complete this *)
-  Flambda_iterators.iter
-    (fun (_t : Flambda.t) -> ())
+  let on_named ~(state : Feature_extractor.t) (named: Flambda.named) = 
+    begin match named with
+    | Symbol _ ->
+      { state with
+        bound_vars_to_symbol = state.bound_vars_to_symbol + 1 };
+    | Const _
+    | Allocated_const _ 
+    | Read_mutable _
+    | Read_symbol_field _
+    | Set_of_closures _
+    | Project_closure _
+    | Move_within_set_of_closures _
+    | Project_var _
+    | Prim _
+    | Expr _ -> state
+    end
+  in
+  Flambda_iterators.iter_toplevel
+    (fun (t : Flambda.t) ->
+       let (current : Feature_extractor.t) = !state in
+       match t with
+       | Var _ -> ()
+       | Let let_expr ->
+         let current =
+           { current with bound_vars = current.bound_vars + 1 }
+         in
+         state := on_named ~state:current let_expr.defining_expr
+       | Let_mutable _ ->
+         let current = 
+           { current with
+             bound_vars_to_mutable = current.bound_vars_to_mutable + 1 }
+         in
+         state := current
+       | Let_rec (let_rec_expr, _) ->
+         let current =
+           { current with bound_vars = current.bound_vars + List.length let_rec_expr }
+         in
+         state := 
+           List.fold_left (fun state (_var, named) ->
+                 on_named ~state named)
+             current let_rec_expr
+       | Apply apply ->
+         let current = 
+           match apply.kind with
+           | Indirect ->
+             { current with
+               underlying_indirect_applications = current.underlying_indirect_applications + 1 }
+           | Direct _ -> 
+             { current with
+               underlying_direct_applications = current.underlying_direct_applications + 1 }
+         in
+         state := current
+       | Assign _ -> ()
+
+       | Send _
+       | If_then_else _ 
+       | Switch _
+       | String_switch _
+       | Static_raise _
+       | Static_catch _
+       | Try_with _
+       | While _
+       | For _
+       | Proved_unreachable ->
+         ()
+    )
     (fun (_named : Flambda.named) -> ())
     function_decl.body;
-  !init
+  !state
 ;;
 
 let inline env r ~call_site ~lhs_of_application
