@@ -182,7 +182,8 @@ let middle_end ppf ~source_provenance ~prefixname ~backend
     (* dump_function_sizes flam ~backend; *)
     begin match !Clflags.dump_features with
     | None -> ()
-    | Some file ->
+    | Some suffix ->
+      let file = Printf.sprintf "%s.%s" prefixname suffix in
       let oc = open_out_bin file in
       output_value oc !Feature_extractor.mined_features;
       close_out oc
