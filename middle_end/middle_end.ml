@@ -201,6 +201,7 @@ let middle_end ppf ~source_provenance ~prefixname ~backend
               | _ :: tl -> String.concat "/" (List.rev tl)
               | [] -> ""
             in
+            let d = Printf.sprintf "%s/%s" output_dir d in
             Sys.command (Printf.sprintf "mkdir -p %s" d)
           in
           assert (exit_code = 0);
