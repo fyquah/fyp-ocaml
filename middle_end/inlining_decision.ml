@@ -102,6 +102,7 @@ let _extract_features
       ~closure_depth:(E.closure_depth env)
   in
   let (init : Feature_extractor.t ref) = ref init in
+  (* TODO(fyquah): Complete this *)
   Flambda_iterators.iter
     (fun (_t : Flambda.t) -> ())
     (fun (_named : Flambda.named) -> ())
