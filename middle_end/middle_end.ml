@@ -197,7 +197,7 @@ let middle_end ppf ~source_provenance ~prefixname ~backend
           in
           let exit_code =
             let d =
-              match List.rev (String.split_on_char '/' filename) with
+              match List.rev (String.split_on_char '/' prefixname) with
               | _ :: tl -> String.concat "/" (List.rev tl)
               | [] -> ""
             in
