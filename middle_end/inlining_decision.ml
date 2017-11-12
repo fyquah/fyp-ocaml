@@ -139,11 +139,14 @@ let actually_extract_features
     | Symbol _ ->
       { state with
         bound_vars_to_symbol = state.bound_vars_to_symbol + 1 };
+    | Set_of_closures _ ->
+      { state with
+        set_of_closures = state.set_of_closures + 1
+      }
     | Const _
     | Allocated_const _
     | Read_mutable _
     | Read_symbol_field _
-    | Set_of_closures _
     | Project_closure _
     | Move_within_set_of_closures _
     | Project_var _
