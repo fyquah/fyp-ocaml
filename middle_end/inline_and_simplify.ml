@@ -1037,12 +1037,14 @@ and simplify_named env r (tree : Flambda.named) : Flambda.named * R.t =
           | (Value_float_array _, _)
           | (_, Value_float _) ->
             begin match kind with
-            | Pfloatarray | Pgenarray -> ()
-            | Paddrarray | Pintarray ->
-              (* CR pchambart: Do a proper warning here *)
+            | Pfloatarray | Pgenarray
+            | Paddrarray | Pintarray -> ()
+(* For the purpose of data mining, should be able to pretend nothing happened. *)
+(*
               Misc.fatal_errorf "Assignment of a float to a specialised \
                                  non-float array: %a"
                 Flambda.print_named tree
+*)
             end;
             Lambda.Pfloatarray
             (* CR pchambart: This should be accounted by the benefit *)
