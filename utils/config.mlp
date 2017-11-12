@@ -59,6 +59,8 @@ let mkdll, mkexe, mkmaindll =
 
 let profiling = %%PROFILING%%
 let flambda = %%FLAMBDA%%
+let extract_features = %%EXTRACT_FEATURES%%
+
 let safe_string = %%SAFE_STRING%%
 
 let afl_instrument = %%AFL_INSTRUMENT%%

@@ -50,7 +50,7 @@ let hd_opt a =
   | [] -> None
   | hd :: _ -> Some hd
 
-let extract_features
+let actually_extract_features
     ~(kind : Flambda.call_kind)
     ~(closure_id : Closure_id.t)
     ~(env : E.t)
@@ -218,6 +218,16 @@ let extract_features
     function_decl.body;
   Feature_extractor.mined_features :=
     !state :: !Feature_extractor.mined_features;
+;;
+
+let extract_features ~kind ~closure_id ~env ~function_decl
+     ~value_set_of_closures ~size_before_simplify ~size_after_simplify
+     ~flambda_tries =
+  if Config.extract_features then begin
+    actually_extract_features ~kind ~closure_id ~env ~function_decl
+      ~value_set_of_closures ~size_before_simplify ~size_after_simplify
+      ~flambda_tries
+  end
 ;;
 
 let inline env r ~kind ~call_site ~lhs_of_application

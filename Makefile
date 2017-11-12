@@ -328,6 +328,7 @@ utils/config.ml: utils/config.mlp config/Makefile
 	    -e 's|%%EXT_LIB%%|$(EXT_LIB)|' \
 	    -e 's|%%EXT_OBJ%%|$(EXT_OBJ)|' \
 	    -e 's|%%FLAMBDA%%|$(FLAMBDA)|' \
+	    -e 's|%%EXTRACT_FEATURES%%|$(EXTRACT_FEATURES)|' \
 	    -e 's|%%FLEXLINK_FLAGS%%|$(subst \,\\,$(FLEXLINK_FLAGS))|' \
 	    -e 's|%%FLEXDLL_DIR%%|$(FLEXDLL_DIR)|' \
 	    -e 's|%%HOST%%|$(HOST)|' \
