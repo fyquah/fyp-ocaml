@@ -55,7 +55,10 @@ let extract_features
     ~(closure_id : Closure_id.t)
     ~(env : E.t)
     ~(function_decl : Flambda.function_declaration)
-    ~(value_set_of_closures: Simple_value_approx.value_set_of_closures) =
+    ~(value_set_of_closures: Simple_value_approx.value_set_of_closures)
+    ~(size_before_simplify : int)
+    ~(size_after_simplify  : int)
+    ~(flambda_tries: bool) =
   let function_decls = value_set_of_closures.function_decls in
   let is_annonymous =
     find_substring
@@ -90,6 +93,9 @@ let extract_features
   let params = function_decl.params in
   let init =
     Feature_extractor.empty
+      ~size_before_simplify
+      ~size_after_simplify
+      ~flambda_tries
       ~params:(List.length params)
       ~is_a_functor:function_decl.is_a_functor
       ~is_recursive:(Variable.Map.cardinal function_decls.funs > 1)
@@ -117,7 +123,14 @@ let extract_features
         value_set_of_closures.specialised_args 0
     in
     let non_specialized_args = List.length params - specialized_args in
-    { init with free_vars; free_symbols; specialized_args; non_specialized_args; }
+    { init with
+      size_after_simplify;
+      size_before_simplify;
+      free_vars;
+      free_symbols;
+      specialized_args;
+      non_specialized_args;
+    }
   in
   let (state : Feature_extractor.t ref) = ref init in
   (* TODO(fyquah): Complete this *)
@@ -203,7 +216,8 @@ let extract_features
     )
     (fun (_named : Flambda.named) -> ())
     function_decl.body;
-  !state
+  Feature_extractor.mined_features :=
+    !state :: !Feature_extractor.mined_features;
 ;;
 
 let inline env r ~kind ~call_site ~lhs_of_application
@@ -214,13 +228,6 @@ let inline env r ~kind ~call_site ~lhs_of_application
     ~(inline_requested : Lambda.inline_attribute)
     ~(specialise_requested : Lambda.specialise_attribute)
     ~self_call ~fun_cost ~inlining_threshold =
-  let features =
-    let closure_id = closure_id_being_applied in
-    extract_features ~kind ~closure_id ~env ~function_decl
-      ~value_set_of_closures
-  in
-  Feature_extractor.mined_features :=
-    features :: !Feature_extractor.mined_features;
   let toplevel = E.at_toplevel env in
   let branch_depth = E.branch_depth env in
   let unrolling, always_inline, never_inline, env =
@@ -411,7 +418,13 @@ let inline env r ~kind ~call_site ~lhs_of_application
     Original S.Not_inlined.Override
   | None ->
     begin match try_inlining with
-    | Don't_try_it decision -> Original decision
+    | Don't_try_it decision ->
+      let closure_id = closure_id_being_applied in
+      let size = Inlining_cost.lambda_size function_decl.body in
+      extract_features ~kind ~closure_id ~env ~function_decl
+        ~size_before_simplify:size ~size_after_simplify:size
+        ~value_set_of_closures ~flambda_tries:false;
+      Original decision
     | Try_it ->
       let r =
         R.set_inlining_threshold r (Some remaining_inlining_threshold)
@@ -425,6 +438,14 @@ let inline env r ~kind ~call_site ~lhs_of_application
           ~closure_id_being_applied ~specialise_requested ~inline_requested
           ~function_decl ~args ~dbg ~simplify
       in
+      let size_before_simplify =
+        Inlining_cost.lambda_size function_decl.body
+      in
+      let size_after_simplify = Inlining_cost.lambda_size body in
+      extract_features ~kind ~closure_id:closure_id_being_applied
+        ~env ~size_before_simplify
+        ~size_after_simplify ~function_decl
+        ~value_set_of_closures ~flambda_tries:true;
       let num_direct_applications_seen =
         (R.num_direct_applications r_inlined) - (R.num_direct_applications r)
       in
