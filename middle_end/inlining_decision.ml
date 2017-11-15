@@ -381,7 +381,13 @@ let inline env r ~kind ~call_site ~lhs_of_application
   in
   let call_stack = call_site :: E.inlining_stack env in
   let applied = closure_id_being_applied in
-  match Data_collector.find_decision ~call_stack ~applied  with
+  let found =
+    if E.round env = 0 then
+      Data_collector.find_decision ~call_stack ~applied
+    else
+      None
+  in
+  match found with
   | Some true  ->
     let body, r_inlined =
       (* First we construct the code that would result from copying the body of
