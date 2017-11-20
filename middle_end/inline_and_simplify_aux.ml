@@ -456,7 +456,13 @@ module Env = struct
     let original_bound_vars_stack =
       bound_vars :: t.original_bound_vars_stack
     in
-    let t = { t with current_function = Some closure_id; original_function_size_stack; original_bound_vars_stack } in
+    let t =
+      { t with
+        current_function = Some closure_id;
+        original_function_size_stack; original_bound_vars_stack;
+        call_site_offset = ref Call_site.Offset.base;
+      }
+    in
     f (note_entering_closure t ~closure_id ~dbg)
 
   let record_decision t decision =
