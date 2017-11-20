@@ -175,6 +175,7 @@ let inline_by_copying_function_body ~env ~r
   in
   let env = E.activate_freshening (E.set_never_inline env) in
   let env = E.set_inline_debuginfo ~dbg env in
+  let env = E.bump_offset env in
   simplify env r expr
 
 let inline_by_copying_function_declaration ~env ~r

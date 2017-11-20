@@ -52,6 +52,8 @@ module Env = struct
     original_bound_vars_stack : int list;
   }
 
+  let bump_offset t = { t with call_site_offset = ref Call_site.Offset.base }
+
   let add_context t ctx = { t with call_context_stack = ctx :: t.call_context_stack }
 
   let call_context_stack t = t.call_context_stack
@@ -398,10 +400,10 @@ module Env = struct
       }
 
   let note_entering_inlined t closure_id call_site =
-    if t.never_inline then t
+    let call_site_offset = ref Call_site.Offset.base in
+    if t.never_inline then { t with call_site_offset }
     else
       let inlining_stack = call_site :: t.inlining_stack in
-      let call_site_offset = ref Call_site.Offset.base in
       { t with
         inlining_stats_closure_stack =
           Inlining_stats.Closure_stack.note_entering_inlined

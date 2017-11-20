@@ -99,9 +99,6 @@ let implementation ~backend ppf sourcefile outputprefix =
           let ic = open_in filename in
           let ts = Data_collector.load_from_channel ic in
           Data_collector.inlining_overrides := ts;
-          Format.printf "Loaded override devisions: \n%a\n"
-            Data_collector.pprint_list
-            !Data_collector.inlining_overrides
         end;
 
         (typedtree, coercion)

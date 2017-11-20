@@ -765,6 +765,8 @@ let specialise env r ~lhs_of_application
         Original decision
     end
 
+let blabla = ref false
+
 let for_call_site ~kind ~env ~r ~(function_decls : Flambda.function_declarations)
       ~lhs_of_application ~closure_id_being_applied
       ~(function_decl : Flambda.function_declaration)
@@ -772,7 +774,9 @@ let for_call_site ~kind ~env ~r ~(function_decls : Flambda.function_declarations
       ~args ~args_approxs ~dbg ~simplify ~inline_requested
       ~specialise_requested =
   let (_  : Flambda.call_kind) = kind in
-  let (call_site_offset, env) = E.next_call_site_offset env in
+  let (call_site_offset, env) =
+    E.next_call_site_offset env
+  in
   let call_site =
     match E.current_function env with
     | None ->
@@ -784,6 +788,18 @@ let for_call_site ~kind ~env ~r ~(function_decls : Flambda.function_declarations
   if List.length args <> List.length args_approxs then begin
     Misc.fatal_error "Inlining_decision.for_call_site: inconsistent lengths \
         of [args] and [args_approxs]"
+  end;
+  if E.round env = 0 then begin
+    let address = 2 * (Obj.magic (Obj.field (Obj.repr env) 1)) in
+    Format.printf "[%d] %a -> Call site offset = %d\n"
+      address
+      Closure_id.print closure_id_being_applied
+      (Call_site.Offset.to_int call_site_offset)
+  end else begin
+    if not !blabla then begin
+      Format.printf "============================\n";
+      blabla := true
+    end
   end;
   (* Remove unroll attributes from functions we are already actively
      unrolling, otherwise they'll be unrolled again next round. *)
