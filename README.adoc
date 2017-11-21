@@ -1,5 +1,19 @@
 = README =
 
+== FYP HACKS
+
+In order to override inlining decisions, we have to add some id-ing to call
+sites to uniquely identify them.
+
+There are a few places where this id-ing system is lacking, notably:
+
+- [Inline_and_simplify.simplify_partial_application], where we simply bump
+  the id, and rely on the fact that nothing is never inlined to prevent
+  missed tree branches. Ideally we want some manner of identifying
+  these dynamically created fun-vars used in over applications (or just
+  ignore them consistently throughout)
+- Specialized function is not handled correctly yet.
+
 == Overview
 
 OCaml is an implementation of the ML language, based on the Caml Light
