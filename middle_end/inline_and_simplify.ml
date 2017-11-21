@@ -873,7 +873,8 @@ and simplify_over_application env r ~kind ~args ~args_approxs ~function_decls
         inline = inline_requested; specialise = specialise_requested; })
   in
   let expr = Lift_code.lift_lets_expr expr ~toplevel:true in
-  simplify (E.set_never_inline env) r expr
+  let env = E.set_never_inline env in
+  simplify (E.bump_offset env) r expr
 
 and simplify_named env r (tree : Flambda.named) : Flambda.named * R.t =
   match tree with
@@ -1698,7 +1699,7 @@ let run ~never_inline ~backend ~prefixname ~round program =
   assert (Static_exception.Set.is_empty (R.used_static_exceptions r));
   if !Clflags.inlining_report then begin
     let output_prefix = Printf.sprintf "%s.%d" prefixname round in
-    (* Inlining_stats.save_then_forget_decisions ~output_prefix *)
+    Inlining_stats.save_then_forget_decisions ~output_prefix;
     Data_collector.save ~output_prefix
   end;
   Clflags.inlining_report := report;

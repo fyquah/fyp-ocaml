@@ -828,7 +828,9 @@ let for_call_site ~kind ~env ~r ~(function_decls : Flambda.function_declarations
   let original_r =
     R.set_approx (R.seen_direct_application r) (A.value_unknown Other)
   in
-  if function_decl.stub then
+  if function_decl.stub then begin
+    if not !blabla then
+      Format.printf "-> Stub\n";
     let body, r =
       Inlining_transforms.inline_by_copying_function_body ~env
         ~r ~function_decls ~lhs_of_application
@@ -838,12 +840,15 @@ let for_call_site ~kind ~env ~r ~(function_decls : Flambda.function_declarations
     let applied = closure_id_being_applied in
     let env = E.inside_inlined_stub env applied call_site in
     simplify env r body
-  else if E.never_inline env then
+  end else if E.never_inline env then begin
+    if not !blabla then
+      Format.printf "-> Never inline %a\n" Call_site.pprint call_site;
     (* This case only occurs when examining the body of a stub function
        but not in the context of inlining said function.  As such, there
        is nothing to do here (and no decision to report). *)
     original, original_r
-  else begin
+  end else begin
+    if not !blabla then Format.printf "-> Regular\n";
     let env = E.unset_never_inline_inside_closures env in
     let env =
       E.note_entering_call env
