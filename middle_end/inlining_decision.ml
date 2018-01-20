@@ -382,8 +382,22 @@ let inline env r ~kind ~call_site ~lhs_of_application
   let call_stack = call_site :: E.inlining_stack env in
   let applied = closure_id_being_applied in
   let found =
+    let inlining_definitely_terminates () =
+      match try_inlining with
+      | Don't_try_it S.Not_inlined.Unrolling_depth_exceeded
+      | Don't_try_it Annotation
+      | Don't_try_it Self_call
+      | Don't_try_it Above_threshold _ -> false
+
+      | Don't_try_it Classic_mode
+      | Don't_try_it Override
+      | Don't_try_it Without_subfunctions _
+      | Don't_try_it With_subfunctions (_, _)
+      | Don't_try_it No_useful_approximations -> true
+      | Try_it -> true
+    in
     if E.round env = 0 then
-      if !Clflags.exhaustive_inlining then
+      if (!Clflags.exhaustive_inlining && inlining_definitely_terminates ()) then
         Some true
       else
         Data_collector.find_decision ~call_stack ~applied
@@ -768,7 +782,7 @@ let specialise env r ~lhs_of_application
         Original decision
     end
 
-let blabla = ref false
+let blabla = ref true
 
 let for_call_site ~kind ~env ~r ~(function_decls : Flambda.function_declarations)
       ~lhs_of_application ~closure_id_being_applied
@@ -776,11 +790,6 @@ let for_call_site ~kind ~env ~r ~(function_decls : Flambda.function_declarations
       ~(value_set_of_closures : Simple_value_approx.value_set_of_closures)
       ~args ~args_approxs ~dbg ~simplify ~inline_requested
       ~specialise_requested =
-  blabla := (
-    match !Clflags.inlining_overrides with
-    | None -> not !Clflags.exhaustive_inlining
-    | Some _ -> false
-  );
   let (_  : Flambda.call_kind) = kind in
   let (call_site_offset, env) =
     E.next_call_site_offset env

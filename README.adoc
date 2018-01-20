@@ -13,6 +13,8 @@ There are a few places where this id-ing system is lacking, notably:
   these dynamically created fun-vars used in over applications (or just
   ignore them consistently throughout)
 - Specialized function is not handled correctly yet.
+- [Inlining_decision.ml#390] It should be save to keep [Above_threshold]
+  for inlining_definitely_terminates.
 
 == Overview
 
