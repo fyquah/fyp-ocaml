@@ -35,6 +35,9 @@ let middle_end ppf ~source_provenance ~prefixname ~backend
     ~filename
     ~module_ident
     ~module_initializer =
+  if !Clflags.exhaustive_inlining then begin
+    Printf.fprintf stderr ">>> EXHAUSTIVE INLINING <<<\n"
+  end;
   let pass_number = ref 0 in
   let round_number = ref 0 in
   let check flam =
