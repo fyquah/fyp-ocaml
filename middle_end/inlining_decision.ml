@@ -383,7 +383,10 @@ let inline env r ~kind ~call_site ~lhs_of_application
   let applied = closure_id_being_applied in
   let found =
     if E.round env = 0 then
-      Data_collector.find_decision ~call_stack ~applied
+      if !Clflags.exhaustive_inlining then
+        Some true
+      else
+        Data_collector.find_decision ~call_stack ~applied
     else
       None
   in
@@ -773,6 +776,11 @@ let for_call_site ~kind ~env ~r ~(function_decls : Flambda.function_declarations
       ~(value_set_of_closures : Simple_value_approx.value_set_of_closures)
       ~args ~args_approxs ~dbg ~simplify ~inline_requested
       ~specialise_requested =
+  blabla := (
+    match !Clflags.inlining_overrides with
+    | None -> not !Clflags.exhaustive_inlining
+    | Some _ -> false
+  );
   let (_  : Flambda.call_kind) = kind in
   let (call_site_offset, env) =
     E.next_call_site_offset env
@@ -791,10 +799,12 @@ let for_call_site ~kind ~env ~r ~(function_decls : Flambda.function_declarations
   end;
   if E.round env = 0 then begin
     let address = 2 * (Obj.magic (Obj.field (Obj.repr env) 1)) in
-    Format.printf "[%d] %a -> Call site offset = %d\n"
-      address
-      Closure_id.print closure_id_being_applied
-      (Call_site.Offset.to_int call_site_offset)
+    if not !blabla then begin
+      Format.printf "[%d] %a -> Call site offset = %d\n"
+        address
+        Closure_id.print closure_id_being_applied
+        (Call_site.Offset.to_int call_site_offset)
+    end
   end else begin
     if not !blabla then begin
       Format.printf "============================\n";

@@ -78,6 +78,7 @@ module Options = Main_args.Make_optcomp_options (struct
       "Syntax: -inline-max-unroll <n> | <round>=<n>[,...]"
       inline_max_unroll
   let _classic_inlining () = classic_inlining := true
+  let _exhaustive_inlining () = exhaustive_inlining := true
   let _inline_call_cost spec =
     Int_arg_helper.parse spec
       "Syntax: -inline-call-cost <n> | <round>=<n>[,...]"

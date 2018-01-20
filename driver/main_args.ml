@@ -174,6 +174,10 @@ let mk_classic_inlining f =
      compiler)"
 ;;
 
+let mk_exhaustive_inlining f =
+  "-exhaustive-inlining", Arg.Unit f, " Always inline up to inlining depth"
+;;
+
 let mk_inline_cost arg descr default f =
   Printf.sprintf "-inline-%s-cost" arg,
   Arg.String f,
@@ -904,6 +908,7 @@ module type Optcommon_options = sig
   val _rounds : int -> unit
   val _inline_max_unroll : string -> unit
   val _classic_inlining : unit -> unit
+  val _exhaustive_inlining : unit -> unit
   val _inline_call_cost : string -> unit
   val _inline_alloc_cost : string -> unit
   val _inline_prim_cost : string -> unit
@@ -1157,6 +1162,7 @@ struct
     mk_ccopt F._ccopt;
     mk_clambda_checks F._clambda_checks;
     mk_classic_inlining F._classic_inlining;
+    mk_exhaustive_inlining F._exhaustive_inlining;
     mk_color F._color;
     mk_compact F._compact;
     mk_config F._config;
@@ -1292,6 +1298,7 @@ module Make_opttop_options (F : Opttop_options) = struct
     mk_rounds F._rounds;
     mk_inline_max_unroll F._inline_max_unroll;
     mk_classic_inlining F._classic_inlining;
+    mk_exhaustive_inlining F._exhaustive_inlining;
     mk_inline_call_cost F._inline_call_cost;
     mk_inline_alloc_cost F._inline_alloc_cost;
     mk_inline_prim_cost F._inline_prim_cost;
