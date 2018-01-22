@@ -51,7 +51,7 @@ let pprint_list ppf ts =
 
 let equal a b =
   a.decision = b.decision &&
-  Closure_id.equal a.applied b.applied &&
+  Closure_id.partial_equal a.applied b.applied &&
   Helper.list_equal Call_site.equal a.call_stack b.call_stack
 
 let find_decision ~call_stack ~applied =
