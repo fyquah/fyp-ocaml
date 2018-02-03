@@ -482,6 +482,7 @@ let inline env r ~kind ~call_site ~lhs_of_application
               then we are certain that this code will be kept. *)
         then env
         else E.inlining_level_up env
+      in
       let size_before_simplify =
         Inlining_cost.lambda_size function_decl.body
       in

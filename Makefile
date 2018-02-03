@@ -870,7 +870,7 @@ beforedepend:: parsing/parser.mli parsing/parser.ml
 sexp/sexp_lexer.ml: sexp/sexp_lexer.mll
 	$(CAMLLEX) $<
 
-sexp/sexp_parser.ml sexp/sexp_parser.mli: sexp/sexp_parser.mly
+sexp/sexp_parser.mli sexp/sexp_parser.ml: sexp/sexp_parser.mly
 	menhir $<
 
 # The lexer
@@ -1325,7 +1325,7 @@ partialclean::
 .PHONY: depend
 depend: beforedepend
 	(for d in utils parsing typing bytecomp asmcomp middle_end \
-	 middle_end/base_types asmcomp/debug driver toplevel; \
+	 middle_end/base_types asmcomp/debug driver toplevel sexp; \
 	 do $(CAMLDEP) -slash $(DEPFLAGS) $$d/*.mli $$d/*.ml || exit; \
 	 done) > .depend
 	$(CAMLDEP) -slash $(DEPFLAGS) -native \
