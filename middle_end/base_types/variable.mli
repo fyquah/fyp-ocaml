@@ -28,6 +28,9 @@
 
 include Identifiable.S
 
+val to_sexp : t -> Sexp.t
+val of_sexp: Sexp.t -> t
+
 val create : ?current_compilation_unit:Compilation_unit.t -> string -> t
 val create_with_same_name_as_ident : Ident.t -> t
 
@@ -60,3 +63,5 @@ val compare_lists : t list -> t list -> int
 
 val output_full : out_channel -> t -> unit
 (** Unlike [output], [output_full] includes the compilation unit. *)
+
+val partial_equal : t -> t -> bool

@@ -82,6 +82,7 @@ module Options = Main_args.Make_optcomp_options (struct
   let _inline_lifting_benefit n = option_with_arg "-inline-lifting-benefit" n
   let _inline_branch_factor n = option_with_arg "-inline-branch-factor" n
   let _classic_inlining = option "-Oclassic"
+  let _exhaustive_inlining = option "-exhaustive-inlining"
   let _intf s = with_intf := true; option_with_arg "-intf" s
   let _intf_suffix s = option_with_arg "-intf-suffix" s
   let _keep_docs = option "-keep-docs"
@@ -103,6 +104,9 @@ module Options = Main_args.Make_optcomp_options (struct
   let _no_unbox_free_vars_of_closures = option "-no-unbox-free-vars-of-closures"
   let _no_unbox_specialised_args = option "-no-unbox-specialised-args"
   let _o s = option_with_arg "-o" s
+  let _inlining_overrides s = option_with_arg "-inlining-overrides" s
+  let _perf_profile s = option_with_arg "-perf-profile" s
+  let _dump_features s = option_with_arg "-dump-features" s
   let _o2 = option "-O2"
   let _o3 = option "-O3"
   let _open s = option_with_arg "-open" s

@@ -70,6 +70,9 @@ val objfiles : string list ref
 val ccobjs : string list ref
 val dllibs : string list ref
 val compile_only : bool ref
+val inlining_overrides : string option ref
+val perf_profile : string option ref
+val dump_features : string option ref
 val output_name : string option ref
 val include_dirs : string list ref
 val no_std_include : bool ref
@@ -201,6 +204,7 @@ val dump_flambda_verbose : bool ref
 val classic_inlining : bool ref
 val afl_instrument : bool ref
 val afl_inst_ratio : int ref
+val exhaustive_inlining : bool ref
 
 val all_passes : string list ref
 val dumped_pass : string -> bool

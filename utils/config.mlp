@@ -78,6 +78,7 @@ let default_safe_string = %%DEFAULT_SAFE_STRING%%
 let windows_unicode = %%WINDOWS_UNICODE%% != 0
 
 let flat_float_array = %%FLAT_FLOAT_ARRAY%%
+let extract_features = %%EXTRACT_FEATURES%%
 
 let afl_instrument = %%AFL_INSTRUMENT%%
 

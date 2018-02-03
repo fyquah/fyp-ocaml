@@ -23,3 +23,6 @@ let unwrap t = t
 
 let wrap_map t = t
 let unwrap_set t = t
+
+let t_of_sexp s = Variable.of_sexp s
+let sexp_of_t t = Variable.to_sexp t

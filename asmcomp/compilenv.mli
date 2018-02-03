@@ -109,6 +109,7 @@ val closure_symbol : Closure_id.t -> Symbol.t
 val function_label : Closure_id.t -> string
         (* linkage name of the code of a function
            flambda-only *)
+val inlining_decisions : (Closure_id.t list * bool) list ref
 
 val new_structured_constant:
   Clambda.ustructured_constant ->

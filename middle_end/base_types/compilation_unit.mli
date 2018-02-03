@@ -31,3 +31,6 @@ val get_current_exn : unit -> t
 val get_current_id_exn : unit -> Ident.t
 
 val string_for_printing : t -> string
+
+val to_sexp : t -> Sexp.t
+val of_sexp : Sexp.t -> t

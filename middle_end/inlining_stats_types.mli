@@ -27,6 +27,7 @@ module Inlined : sig
     | With_subfunctions of
         Inlining_cost.Whether_sufficient_benefit.t
         * Inlining_cost.Whether_sufficient_benefit.t
+    | Override
 end
 
 module Not_inlined : sig
@@ -42,6 +43,7 @@ module Not_inlined : sig
     | With_subfunctions of
         Inlining_cost.Whether_sufficient_benefit.t
         * Inlining_cost.Whether_sufficient_benefit.t
+    | Override
 end
 
 module Specialised : sig

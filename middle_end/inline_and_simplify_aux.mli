@@ -33,7 +33,14 @@ module Env : sig
      : never_inline:bool
     -> backend:(module Backend_intf.S)
     -> round:int
+    -> current_function: Closure_id.t option
     -> t
+
+  val bump_offset : t -> t
+
+  val next_call_site_offset : t -> (Call_site.Offset.t * t)
+
+  val inlining_stack : t -> Call_site.t list
 
   (** Obtain the first-class module that gives information about the
       compiler backend being used for compilation. *)
@@ -168,6 +175,8 @@ module Env : sig
       environment. *)
   val never_inline : t -> bool
 
+  val closure_depth : t -> int
+
   val inlining_level : t -> int
 
   (** Mark that this environment is used to rewrite code for inlining. This is
@@ -200,6 +209,8 @@ module Env : sig
       body of an inlined function. *)
   val inside_inlined_function : t -> Closure_origin.t -> t
 
+  val inside_inlined_stub : t -> Closure_id.t -> Call_site.t -> t
+
   (** If collecting inlining statistics, record that the inliner is about to
       descend into [closure_id].  This information enables us to produce a
       stack of closures that form a kind of context around an inlining
@@ -223,7 +234,7 @@ module Env : sig
    (** If collecting inlining statistics, record that the inliner is about to
        descend into an inlined function call.  This requires that the inliner
        has already entered the call with [note_entering_call]. *)
-  val note_entering_inlined : t -> t
+  val note_entering_inlined : t -> Closure_id.t -> Call_site.t -> t
 
    (** If collecting inlining statistics, record that the inliner is about to
        descend into a specialised function definition.  This requires that the
@@ -240,6 +251,8 @@ module Env : sig
     -> inline_inside:bool
     -> dbg:Debuginfo.t
     -> f:(t -> 'a)
+    -> lambda_size:int
+    -> bound_vars:int
     -> 'a
 
    (** If collecting inlining statistics, record an inlining decision for the
@@ -260,6 +273,14 @@ module Env : sig
 
   (** Appends the locations of inlined call-sites to the [~dbg] argument *)
   val add_inlined_debuginfo : t -> dbg:Debuginfo.t -> Debuginfo.t
+
+  val add_context : t -> Feature_extractor.call_context -> t
+
+  val call_context_stack : t -> Feature_extractor.call_context list
+
+  val original_function_size_stack : t -> int list
+
+  val original_bound_vars_stack : t -> int list
 end
 
 module Result : sig
@@ -355,3 +376,5 @@ val prepare_to_simplify_closure
   -> parameter_approximations:Simple_value_approx.t Variable.Map.t
   -> set_of_closures_env:Env.t
   -> Env.t
+
+val count_bound_vars : Flambda.t -> int

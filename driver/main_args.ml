@@ -174,6 +174,10 @@ let mk_classic_inlining f =
      compiler)"
 ;;
 
+let mk_exhaustive_inlining f =
+  "-exhaustive-inlining", Arg.Unit f, " Always inline up to inlining depth"
+;;
+
 let mk_inline_cost arg descr default f =
   Printf.sprintf "-inline-%s-cost" arg,
   Arg.String f,
@@ -352,6 +356,19 @@ let mk_no_unbox_specialised_args f =
 
 let mk_o f =
   "-o", Arg.String f, "<file>  Set output file name to <file>"
+;;
+
+let mk_perf_profile f =
+  "-perf-profile", Arg.String f, "<file>  Set perf profile file to <file>"
+;;
+
+let mk_dump_features f =
+  "-dump-features", Arg.String f, "<file> Dump inlining features to file"
+;;
+
+let mk_inlining_overrides f =
+  "-inlining-overrides", Arg.String f, "<file> Set inlining overrides file \
+  to <file>"
 ;;
 
 let mk_open f =
@@ -840,6 +857,9 @@ module type Compiler_options = sig
   val _linkall : unit -> unit
   val _noautolink : unit -> unit
   val _o : string -> unit
+  val _perf_profile : string -> unit
+  val _dump_features : string -> unit
+  val _inlining_overrides : string -> unit
   val _opaque :  unit -> unit
   val _output_obj : unit -> unit
   val _output_complete_obj : unit -> unit
@@ -913,6 +933,7 @@ module type Optcommon_options = sig
   val _rounds : int -> unit
   val _inline_max_unroll : string -> unit
   val _classic_inlining : unit -> unit
+  val _exhaustive_inlining : unit -> unit
   val _inline_call_cost : string -> unit
   val _inline_alloc_cost : string -> unit
   val _inline_prim_cost : string -> unit
@@ -1042,6 +1063,9 @@ struct
     mk_nolabels F._nolabels;
     mk_nostdlib F._nostdlib;
     mk_o F._o;
+    mk_perf_profile F._perf_profile;
+    mk_dump_features F._dump_features;
+    mk_inlining_overrides F._inlining_overrides;
     mk_opaque F._opaque;
     mk_open F._open;
     mk_output_obj F._output_obj;
@@ -1167,6 +1191,7 @@ struct
     mk_ccopt F._ccopt;
     mk_clambda_checks F._clambda_checks;
     mk_classic_inlining F._classic_inlining;
+    mk_exhaustive_inlining F._exhaustive_inlining;
     mk_color F._color;
     mk_compact F._compact;
     mk_config F._config;
@@ -1208,6 +1233,9 @@ struct
     mk_no_unbox_free_vars_of_closures F._no_unbox_free_vars_of_closures;
     mk_no_unbox_specialised_args F._no_unbox_specialised_args;
     mk_o F._o;
+    mk_perf_profile F._perf_profile;
+    mk_dump_features F._dump_features;
+    mk_inlining_overrides F._inlining_overrides;
     mk_o2 F._o2;
     mk_o3 F._o3;
     mk_opaque F._opaque;
@@ -1304,6 +1332,7 @@ module Make_opttop_options (F : Opttop_options) = struct
     mk_rounds F._rounds;
     mk_inline_max_unroll F._inline_max_unroll;
     mk_classic_inlining F._classic_inlining;
+    mk_exhaustive_inlining F._exhaustive_inlining;
     mk_inline_call_cost F._inline_call_cost;
     mk_inline_alloc_cost F._inline_alloc_cost;
     mk_inline_prim_cost F._inline_prim_cost;

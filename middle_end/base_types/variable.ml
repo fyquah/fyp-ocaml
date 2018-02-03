@@ -23,6 +23,29 @@ type t = {
   (** [name_stamp]s are unique within any given compilation unit. *)
 }
 
+let to_sexp t =
+  let open Sexp in
+  List [
+    (Compilation_unit.to_sexp t.compilation_unit);
+    (Atom t.name);
+    (Atom (string_of_int t.name_stamp));
+  ]
+;;
+
+let of_sexp s =
+  let open Sexp in
+  match s with
+  | List (compilation_unit :: Atom name :: Atom name_stamp :: []) ->
+    let name_stamp = int_of_string name_stamp in
+    let compilation_unit =
+      Compilation_unit.of_sexp compilation_unit
+    in
+    { compilation_unit; name; name_stamp }
+  | _ ->
+    Misc.fatal_errorf "Cannot parse %a as a Variable.t"
+      Sexp.print_mach s
+;;
+
 include Identifiable.Make (struct
   type nonrec t = t
 
@@ -47,17 +70,39 @@ include Identifiable.Make (struct
   let hash t = t.name_stamp lxor (Compilation_unit.hash t.compilation_unit)
 
   let print ppf t =
-    if Compilation_unit.equal t.compilation_unit
-        (Compilation_unit.get_current_exn ())
-    then begin
-      Format.fprintf ppf "%s/%d"
-        t.name t.name_stamp
-    end else begin
+
+    match Compilation_unit.get_current () with
+    | None ->
       Format.fprintf ppf "%a.%s/%d"
         Compilation_unit.print t.compilation_unit
         t.name t.name_stamp
-    end
+    | Some current ->
+      if Compilation_unit.equal t.compilation_unit current then begin
+        Format.fprintf ppf "%s/%d"
+          t.name t.name_stamp
+      end else begin
+        Format.fprintf ppf "%a.%s/%d"
+          Compilation_unit.print t.compilation_unit
+          t.name t.name_stamp
+      end
 end)
+
+(*
+let of_string s =
+  match String.split_on_char '/' s with
+  | front :: name_stamp :: [] ->
+    let name_stamp = int_of_string name_stamp in
+    begin match String.split_on_char '.' front with
+    | _compilation_unit :: name :: [] ->
+      let compilation_unit = Compilation_unit.get_current_exn () in
+      { name ; name_stamp; compilation_unit }
+    | name :: [] ->
+      let compilation_unit = Compilation_unit.get_current_exn () in
+      { name ; name_stamp; compilation_unit }
+    | _ -> Misc.fatal_error "failed"
+    end
+  | _ -> Misc.fatal_error "Parse error"
+*)
 
 let previous_name_stamp = ref (-1)
 
@@ -122,3 +167,10 @@ let output_full chan t =
   Compilation_unit.output chan t.compilation_unit;
   output_string chan ".";
   output chan t
+
+let partial_equal t1 t2 =
+  if t1 == t2 then true
+  else
+    String.equal t1.name t2.name
+      && Compilation_unit.equal t1.compilation_unit t2.compilation_unit
+;;

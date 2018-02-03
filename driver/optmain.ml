@@ -78,6 +78,7 @@ module Options = Main_args.Make_optcomp_options (struct
       "Syntax: -inline-max-unroll <n> | <round>=<n>[,...]"
       inline_max_unroll
   let _classic_inlining () = classic_inlining := true
+  let _exhaustive_inlining () = exhaustive_inlining := true
   let _inline_call_cost spec =
     Int_arg_helper.parse spec
       "Syntax: -inline-call-cost <n> | <round>=<n>[,...]"
@@ -131,6 +132,9 @@ module Options = Main_args.Make_optcomp_options (struct
   let _nostdlib = set no_std_include
   let _no_unbox_free_vars_of_closures = clear unbox_free_vars_of_closures
   let _no_unbox_specialised_args = clear unbox_specialised_args
+  let _perf_profile s = perf_profile := Some s
+  let _dump_features s = dump_features := Some s
+  let _inlining_overrides s = inlining_overrides := Some s
   let _o s = output_name := Some s
   (* CR-someday mshinwell: should stop e.g. -O2 -classic-inlining
      lgesbert: could be done in main() below, like for -pack and -c, but that

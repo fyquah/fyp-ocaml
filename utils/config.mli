@@ -151,6 +151,9 @@ val profiling : bool
 val flambda : bool
         (* Whether the compiler was configured for flambda *)
 
+val extract_features : bool
+        (* Whether the compiler was configured for data mining *)
+
 val spacetime : bool
         (* Whether the compiler was configured for Spacetime profiling *)
 val enable_call_counts : bool

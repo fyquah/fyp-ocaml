@@ -593,6 +593,10 @@ and simplify_set_of_closures original_env r
         ~free_vars ~specialised_args ~parameter_approximations
         ~set_of_closures_env
     in
+    let lambda_size = Inlining_cost.lambda_size function_decl.body in
+    let bound_vars =
+      Inline_and_simplify_aux.count_bound_vars function_decl.body
+    in
     let body, r =
       E.enter_closure closure_env ~closure_id:(Closure_id.wrap fun_var)
         ~inline_inside:
@@ -673,7 +677,7 @@ and simplify_set_of_closures original_env r
 
 and simplify_apply env r ~(apply : Flambda.apply) : Flambda.t * R.t =
   let {
-    Flambda. func = lhs_of_application; args; kind = _; dbg;
+    Flambda. func = lhs_of_application; args; kind; dbg;
     inline = inline_requested; specialise = specialise_requested;
   } = apply in
   let dbg = E.add_inlined_debuginfo env ~dbg in
@@ -776,7 +780,7 @@ and simplify_apply env r ~(apply : Flambda.apply) : Flambda.t * R.t =
               inline = inline_requested; specialise = specialise_requested; }),
             ret r (A.value_unknown Other)))
 
-and simplify_full_application env r ~function_decls ~lhs_of_application ~apply_id
+and simplify_full_application env r ~function_decls ~lhs_of_application ~apply_id ~kind
       ~closure_id_being_applied ~function_decl ~value_set_of_closures ~args
       ~args_approxs ~dbg ~inline_requested ~specialise_requested =
   Inlining_decision.for_call_site ~env ~r ~function_decls ~apply_id
@@ -850,7 +854,7 @@ and simplify_partial_application env r ~apply_id ~lhs_of_application
   in
   simplify env r with_known_args
 
-and simplify_over_application env r ~args ~args_approxs ~function_decls
+and simplify_over_application env r ~args ~args_approxs ~function_decls ~kind
       ~lhs_of_application ~closure_id_being_applied ~apply_id ~function_decl
       ~value_set_of_closures ~dbg ~inline_requested ~specialise_requested =
   let arity = Flambda_utils.function_arity function_decl in
@@ -876,7 +880,8 @@ and simplify_over_application env r ~args ~args_approxs ~function_decls
         apply_id = Apply_id.change_label apply_id `Over_application })
   in
   let expr = Lift_code.lift_lets_expr expr ~toplevel:true in
-  simplify (E.set_never_inline env) r expr
+  let env = E.set_never_inline env in
+  simplify (E.bump_offset env) r expr
 
 and simplify_named env r (tree : Flambda.named) : Flambda.named * R.t =
   match tree with
@@ -1036,20 +1041,20 @@ and simplify_named env r (tree : Flambda.named) : Flambda.named * R.t =
           Location.prerr_warning (Debuginfo.to_location dbg)
             Warnings.Assignment_to_non_mutable_value
         end;
-        let kind =
-          let check () =
-            match kind with
-            | Pfloatarray | Pgenarray -> ()
-            | Paddrarray | Pintarray ->
-              (* CR pchambart: Do a proper warning here *)
+        let kind = match A.descr block_approx, A.descr value_approx with
+          | (Value_float_array _, _)
+          | (_, Value_float _) ->
+            begin match kind with
+            | Pfloatarray | Pgenarray
+            | Paddrarray | Pintarray -> ()
+(* For the purpose of data mining, should be able to pretend nothing happened. *)
+(*
               Misc.fatal_errorf "Assignment of a float to a specialised \
                                  non-float array: %a"
                 Flambda.print_named tree
-          in
-          match A.descr block_approx, A.descr value_approx with
-          | (Value_float_array _, _) -> check (); Lambda.Pfloatarray
-          | (_, Value_float _) when Config.flat_float_array ->
-            check (); Lambda.Pfloatarray
+*)
+            end;
+            Lambda.Pfloatarray
             (* CR pchambart: This should be accounted by the benefit *)
           | _ ->
             kind
@@ -1170,12 +1175,14 @@ and simplify env r (tree : Flambda.t) : Flambda.t * R.t =
       match body with
       | Let { var; defining_expr = def; body; _ }
           when not (Flambda_utils.might_raise_static_exn def i) ->
-        simplify env r
+        simplify (E.add_context env Feature_extractor.In_catch_block) r
           (Flambda.create_let var def (Static_catch (i, vars, body, handler)))
       | _ ->
         let i, sb = Freshening.add_static_exception (E.freshening env) i in
         let env = E.set_freshening env sb in
-        let body, r = simplify env r body in
+        let body, r =
+          simplify (E.add_context env Feature_extractor.In_catch_block) r body
+        in
         (* CR-soon mshinwell: for robustness, R.used_static_exceptions should
            maybe be removed. *)
         if not (Static_exception.Set.mem i (R.used_static_exceptions r)) then
@@ -1208,17 +1215,24 @@ and simplify env r (tree : Flambda.t) : Flambda.t * R.t =
         end
     end
   | Try_with (body, id, handler) ->
-    let body, r = simplify env r body in
+    let body, r =
+      simplify (E.add_context env Feature_extractor.In_try_block) r body
+    in
     let id, sb = Freshening.add_variable (E.freshening env) id in
     let env = E.add (E.set_freshening env sb) id (A.value_unknown Other) in
     let env = E.inside_branch env in
-    let handler, r = simplify env r handler in
+    let handler, r =
+      simplify (E.add_context env Feature_extractor.In_catch_block) r handler
+    in
     Try_with (body, id, handler), ret r (A.value_unknown Other)
   | If_then_else (arg, ifso, ifnot) ->
     (* When arg is the constant false or true (or something considered
        as true), we can drop the if and replace it by a sequence.
        if arg is not effectful we can also drop it. *)
     simplify_free_variable env arg ~f:(fun env arg arg_approx ->
+      let simplify env r t =
+        simplify (E.add_context env Feature_extractor.Conditional_branch) r t
+      in
       begin match arg_approx.descr with
       | Value_constptr 0 | Value_int 0 ->  (* Constant [false]: keep [ifnot] *)
         let ifnot, r = simplify env r ifnot in
@@ -1237,7 +1251,7 @@ and simplify env r (tree : Flambda.t) : Flambda.t * R.t =
       end)
   | While (cond, body) ->
     let cond, r = simplify env r cond in
-    let body, r = simplify env r body in
+    let body, r = simplify (E.add_context env Feature_extractor.Imperative_loop) r body in
     While (cond, body), ret r (A.value_unknown Other)
   | Send { kind; meth; obj; args; dbg; } ->
     let dbg = E.add_inlined_debuginfo env ~dbg in
@@ -1256,7 +1270,9 @@ and simplify env r (tree : Flambda.t) : Flambda.t * R.t =
           E.add (E.set_freshening env sb) bound_var
             (A.value_unknown Other)
         in
-        let body, r = simplify env r body in
+        let body, r =
+          simplify (E.add_context env Feature_extractor.Imperative_loop) r body
+        in
         For { bound_var; from_value; to_value; direction; body; },
           ret r (A.value_unknown Other)))
   | Assign { being_assigned; new_value; } ->
@@ -1314,28 +1330,38 @@ and simplify env r (tree : Flambda.t) : Flambda.t * R.t =
                 | Float f -> ...]
          *)
           Proved_unreachable, ret r A.value_bottom
-        | [_, branch], [], None
-        | [], [_, branch], None
+        | [_, branch], [], None ->
+          let lam, r = simplify (E.add_context env Feature_extractor.Switch_int_branch) r branch in
+          lam, R.map_benefit r B.remove_branch
+
+        | [], [_, branch], None ->
+          let lam, r = simplify (E.add_context env Feature_extractor.Switch_block_branch) r branch in
+          lam, R.map_benefit r B.remove_branch
+
         | [], [], Some branch ->
-          let lam, r = simplify env r branch in
+          let lam, r = simplify (E.add_context env Feature_extractor.Switch_failaction_branch) r branch in
           lam, R.map_benefit r B.remove_branch
         | _ ->
           let env = E.inside_branch env in
-          let f (i, v) (acc, r) =
+          let f ~ctx (i, v) (acc, r) =
             let approx = R.approx r in
-            let lam, r = simplify env r v in
+            let lam, r = simplify (E.add_context env ctx) r v in
             (i, lam)::acc,
             R.meet_approx r env approx
           in
           let r = R.set_approx r A.value_bottom in
-          let consts, r = List.fold_right f consts ([], r) in
-          let blocks, r = List.fold_right f blocks ([], r) in
+          let consts, r =
+            List.fold_right (f ~ctx:Feature_extractor.Switch_int_branch) consts ([], r)
+          in
+          let blocks, r =
+            List.fold_right (f ~ctx:Feature_extractor.Switch_block_branch) blocks ([], r)
+          in
           let failaction, r =
             match sw.failaction with
             | None -> None, r
             | Some l ->
               let approx = R.approx r in
-              let l, r = simplify env r l in
+              let l, r = simplify (E.add_context env Feature_extractor.Switch_failaction_branch) r l in
               Some l,
               R.meet_approx r env approx
           in
@@ -1350,7 +1376,7 @@ and simplify env r (tree : Flambda.t) : Flambda.t * R.t =
         let sw, r =
           List.fold_right (fun (str, lam) (sw, r) ->
               let approx = R.approx r in
-              let lam, r = simplify env r lam in
+              let lam, r = simplify (E.add_context env Feature_extractor.String_switch_branch) r lam in
               (str, lam)::sw,
                 R.meet_approx r env approx)
             sw
@@ -1421,6 +1447,10 @@ and duplicate_function ~env ~(set_of_closures : Flambda.set_of_closures)
       ~set_of_closures_env
   in
   let body, _r =
+    let lambda_size = Inlining_cost.lambda_size function_decl.body in
+    let bound_vars =
+      Inline_and_simplify_aux.count_bound_vars function_decl.body
+    in
     E.enter_closure closure_env
       ~closure_id:(Closure_id.wrap fun_var)
       ~inline_inside:false
@@ -1429,6 +1459,8 @@ and duplicate_function ~env ~(set_of_closures : Flambda.set_of_closures)
         assert (E.inside_set_of_closures_declaration
           function_decls.set_of_closures_origin body_env);
         simplify body_env (R.create ()) function_decl.body)
+      ~lambda_size
+      ~bound_vars
   in
   let function_decl =
     Flambda.create_function_declaration ~params:function_decl.params
@@ -1664,7 +1696,7 @@ let run ~never_inline ~backend ~prefixname ~round program =
   if never_inline then Clflags.inlining_report := false;
   let initial_env =
     add_predef_exns_to_environment
-      ~env:(E.create ~never_inline ~backend ~round)
+      ~env:(E.create ~never_inline ~backend ~round ~current_function:None)
       ~backend
   in
   let result, r = simplify_program initial_env r program in
@@ -1678,7 +1710,8 @@ let run ~never_inline ~backend ~prefixname ~round program =
   assert (Static_exception.Set.is_empty (R.used_static_exceptions r));
   if !Clflags.inlining_report then begin
     let output_prefix = Printf.sprintf "%s.%d" prefixname round in
-    Inlining_stats.save_then_forget_decisions ~output_prefix
+    Inlining_stats.save_then_forget_decisions ~output_prefix;
+    Data_collector.save ~output_prefix
   end;
   Clflags.inlining_report := report;
   result

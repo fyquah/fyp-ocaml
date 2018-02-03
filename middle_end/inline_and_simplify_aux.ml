@@ -21,14 +21,17 @@ module Env = struct
 
   type t = {
     backend : (module Backend_intf.S);
+    call_site_offset : Call_site.Offset.t ref;
     round : int;
     approx : (scope * Simple_value_approx.t) Variable.Map.t;
     approx_mutable : Simple_value_approx.t Mutable_variable.Map.t;
     approx_sym : Simple_value_approx.t Symbol.Map.t;
     projections : Variable.t Projection.Map.t;
+    current_function : Closure_id.t option;
     current_functions : Set_of_closures_origin.Set.t;
     (* The functions currently being declared: used to avoid inlining
        recursively *)
+    inlining_stack: Call_site.t list;
     inlining_level : int;
     (* Number of times "inline" has been called recursively *)
     inside_branch : int;
@@ -42,17 +45,31 @@ module Env = struct
     closure_depth : int;
     inlining_stats_closure_stack : Inlining_stats.Closure_stack.t;
     inlined_debuginfo : Debuginfo.t;
+
+    (* For feature extraction *)
+    call_context_stack: Feature_extractor.call_context list;
+    original_function_size_stack : int list;  (* Note : doesn't include size of inlined stuff *)
+    original_bound_vars_stack : int list;
   }
 
-  let create ~never_inline ~backend ~round =
+  let bump_offset t = { t with call_site_offset = ref Call_site.Offset.base }
+
+  let add_context t ctx = { t with call_context_stack = ctx :: t.call_context_stack }
+
+  let call_context_stack t = t.call_context_stack
+
+  let create ~never_inline ~backend ~round ~current_function =
     { backend;
+      call_site_offset = ref Call_site.Offset.base;
       round;
       approx = Variable.Map.empty;
       approx_mutable = Mutable_variable.Map.empty;
       approx_sym = Symbol.Map.empty;
       projections = Projection.Map.empty;
+      current_function;
       current_functions = Set_of_closures_origin.Set.empty;
       inlining_level = 0;
+      inlining_stack = [];
       inside_branch = 0;
       freshening = Freshening.empty;
       never_inline;
@@ -65,10 +82,20 @@ module Env = struct
       inlining_stats_closure_stack =
         Inlining_stats.Closure_stack.create ();
       inlined_debuginfo = Debuginfo.none;
+      call_context_stack = [];
+      original_function_size_stack = [];
+      original_bound_vars_stack = [];
     }
+
+  let inlining_stack t = t.inlining_stack
 
   let backend t = t.backend
   let round t = t.round
+
+  let next_call_site_offset t =
+    let offset = !(t.call_site_offset) in
+    t.call_site_offset := Call_site.Offset.inc offset;
+    (offset, t)
 
   let local env =
     { env with
@@ -222,6 +249,8 @@ module Env = struct
                 (snd (Variable.Map.find id t.approx)))
     with Not_found -> None
 
+  let current_function t = t.current_function
+
   let activate_freshening t =
     { t with freshening = Freshening.activate t.freshening }
 
@@ -334,7 +363,7 @@ module Env = struct
     in
     inlining_count > 0
 
-  let inside_inlined_function t id =
+  let inside_inlined_function t applied  =
     let inlining_count =
       try
         Closure_origin.Map.find id t.inlining_counts
@@ -347,6 +376,7 @@ module Env = struct
     in
     { t with inlining_counts }
 
+  let closure_depth env = env.closure_depth
   let inlining_level t = t.inlining_level
   let freshening t = t.freshening
   let never_inline t = t.never_inline || t.never_inline_outside_closures
@@ -369,14 +399,26 @@ module Env = struct
             t.inlining_stats_closure_stack ~closure_id ~dbg;
       }
 
-  let note_entering_inlined t =
-    if t.never_inline then t
+  let note_entering_inlined t closure_id call_site =
+    let call_site_offset = ref Call_site.Offset.base in
+    if t.never_inline then { t with call_site_offset }
     else
+      let inlining_stack = call_site :: t.inlining_stack in
       { t with
         inlining_stats_closure_stack =
           Inlining_stats.Closure_stack.note_entering_inlined
             t.inlining_stats_closure_stack;
+        inlining_stack;
+        call_site_offset;
+        current_function = Some closure_id;
       }
+
+  let inside_inlined_stub t applied call_site =
+    let call_site_offset = ref Call_site.Offset.base in
+    let inlining_stack = call_site :: t.inlining_stack in
+    { t with current_function = Some applied;
+             inlining_stack;
+             call_site_offset; }
 
   let note_entering_specialised t ~closure_ids =
     if t.never_inline then t
@@ -387,12 +429,42 @@ module Env = struct
             t.inlining_stats_closure_stack ~closure_ids;
       }
 
-  let enter_closure t ~closure_id ~inline_inside ~dbg ~f =
+  let enter_closure t ~closure_id ~inline_inside ~dbg ~f ~lambda_size ~bound_vars =
     let t =
       if inline_inside && not t.never_inline_inside_closures then t
       else set_never_inline t
     in
     let t = unset_never_inline_outside_closures t in
+    let t =
+      let source =
+        match t.inlining_stack with
+        | [] -> None
+        | hd :: _ ->
+          match hd with
+          | Enter_decl enter_decl -> Some enter_decl.closure
+          | At_call_site at_call_site -> Some at_call_site.applied
+      in
+      let inlining_stack =
+        Call_site.enter_decl ~closure:closure_id ~source :: t.inlining_stack
+      in
+      let call_context_stack =
+        Feature_extractor.In_function_declaration :: t.call_context_stack
+      in
+      { t with inlining_stack; call_context_stack; }
+    in
+    let original_function_size_stack =
+      lambda_size :: t.original_function_size_stack
+    in
+    let original_bound_vars_stack =
+      bound_vars :: t.original_bound_vars_stack
+    in
+    let t =
+      { t with
+        current_function = Some closure_id;
+        original_function_size_stack; original_bound_vars_stack;
+        call_site_offset = ref Call_site.Offset.base;
+      }
+    in
     f (note_entering_closure t ~closure_id ~dbg)
 
   let record_decision t decision =
@@ -404,6 +476,9 @@ module Env = struct
 
   let add_inlined_debuginfo t ~dbg =
     Debuginfo.concat t.inlined_debuginfo dbg
+
+  let original_function_size_stack t = t.original_function_size_stack
+  let original_bound_vars_stack t = t.original_bound_vars_stack
 end
 
 let initial_inlining_threshold ~round : Inlining_cost.Threshold.t =
@@ -692,3 +767,16 @@ let prepare_to_simplify_closure ~(function_decl : Flambda.function_declaration)
   in
   add_projections ~closure_env ~which_variables:free_vars
     ~map:(fun (spec_to, _approx) -> spec_to)
+
+let count_bound_vars t =
+  let acc = ref 0 in
+  Flambda_iterators.iter
+    (fun (t : Flambda.t) ->
+      match t with
+      | Let _
+      | Let_mutable _ -> acc := !acc + 1
+      | Let_rec (stuff, _) -> acc := !acc + List.length stuff
+      | _ -> ())
+    (fun (_named : Flambda.named) -> ())
+    t;
+  !acc

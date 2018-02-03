@@ -39,6 +39,7 @@ module Inlined = struct
     | Decl_local_to_application
     | Without_subfunctions of Wsb.t
     | With_subfunctions of Wsb.t * Wsb.t
+    | Override
 
   let summary ppf = function
     | Annotation ->
@@ -55,10 +56,14 @@ module Inlined = struct
       Format.pp_print_text ppf
         "This function was inlined because \
          the expected benefit outweighed the change in code size."
+    | Override ->
+      Format.pp_print_text ppf
+        "This function was explicitly inlined by override calls."
 
   let calculation ~depth ppf = function
     | Annotation -> ()
     | Decl_local_to_application -> ()
+    | Override -> ()
     | Without_subfunctions wsb ->
       print_calculation
         ~depth ~title:"Inlining benefit calculation"
@@ -80,6 +85,7 @@ module Not_inlined = struct
     | Self_call
     | Without_subfunctions of Wsb.t
     | With_subfunctions of Wsb.t * Wsb.t
+    | Override
 
 
   let summary ppf = function
@@ -116,6 +122,9 @@ module Not_inlined = struct
       Format.pp_print_text ppf
         "This function was not inlined because \
          the expected benefit did not outweigh the change in code size."
+    | Override ->
+      Format.pp_print_text ppf
+        "This function was not inlined because it was told not to"
 
   let calculation ~depth ppf = function
     | Classic_mode
@@ -123,6 +132,7 @@ module Not_inlined = struct
     | Annotation
     | No_useful_approximations
     | Unrolling_depth_exceeded
+    | Override
     | Self_call -> ()
     | Without_subfunctions wsb ->
       print_calculation

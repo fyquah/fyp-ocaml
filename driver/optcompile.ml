@@ -94,6 +94,14 @@ let implementation ~backend ppf sourcefile outputprefix =
             Clflags.unbox_free_vars_of_closures := false;
             Clflags.unbox_specialised_args := false
           end;
+          begin match !Clflags.inlining_overrides with
+          | None -> ()
+          | Some filename ->
+            let ic = open_in filename in
+            let ts = Data_collector.load_from_channel ic in
+            Data_collector.inlining_overrides := ts;
+          end;
+
           (typedtree, coercion)
           ++ Profile.(record transl)
               (Translmod.transl_implementation_flambda modulename)

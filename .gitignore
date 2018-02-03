@@ -370,6 +370,8 @@ _ocamltest
 /tools/dumpobj.opt
 /tools/dumpapprox
 /tools/ocamlobjinfo
+/tools/ocamlparseperf
+/tools/ocamlparseperf.opt
 /tools/ocamlobjinfo.opt
 /tools/cvt_emit
 /tools/cvt_emit.opt
@@ -402,9 +404,12 @@ _ocamltest
 /tools/stripdebug.opt
 /tools/make_opcodes
 /tools/make_opcodes.ml
+/tools/ocamloptdecisions
+/tools/ocamloptdecisions.opt
 
 /utils/config.ml
 
 /yacc/ocamlyacc
 /yacc/version.h
 /yacc/.gdb_history
+*.features.bin

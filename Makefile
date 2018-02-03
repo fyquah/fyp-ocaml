@@ -57,7 +57,7 @@ CAMLOPT=$(CAMLRUN) ./ocamlopt -g -nostdlib -I stdlib -I otherlibs/dynlink
 ARCHES=amd64 i386 arm arm64 power s390x
 INCLUDES=-I utils -I parsing -I typing -I bytecomp -I middle_end \
         -I middle_end/base_types -I asmcomp -I asmcomp/debug \
-        -I driver -I toplevel
+        -I driver -I toplevel -I sexp
 
 COMPFLAGS=-strict-sequence -principal -absname -w +a-4-9-41-42-44-45-48 \
 	  -warn-error A \
@@ -83,7 +83,8 @@ UTILS=utils/config.cmo utils/misc.cmo \
   utils/terminfo.cmo utils/ccomp.cmo utils/warnings.cmo \
   utils/consistbl.cmo \
   utils/strongly_connected_components.cmo \
-  utils/targetint.cmo
+  utils/targetint.cmo \
+  utils/helper.cmo
 
 PARSING=parsing/location.cmo parsing/longident.cmo \
   parsing/docstrings.cmo parsing/syntaxerr.cmo \
@@ -189,6 +190,11 @@ ASMCOMP=\
   driver/opterrors.cmo driver/optcompile.cmo
 
 MIDDLE_END=\
+  sexp/sexp.cmo \
+  sexp/sexp_parser.cmo \
+  sexp/sexp_lexer.cmo \
+  sexp/sexp_file.cmo \
+  middle_end/pgo.cmo \
   middle_end/debuginfo.cmo \
   middle_end/base_types/tag.cmo \
   middle_end/base_types/linkage_name.cmo \
@@ -206,6 +212,9 @@ MIDDLE_END=\
   middle_end/base_types/export_id.cmo \
   middle_end/base_types/symbol.cmo \
   middle_end/base_types/apply_id.cmo \
+  middle_end/base_types/call_site.cmo \
+  middle_end/feature_extractor.cmo \
+  middle_end/data_collector.cmo \
   middle_end/pass_wrapper.cmo \
   middle_end/allocated_const.cmo \
   middle_end/parameter.cmo \
@@ -328,6 +337,7 @@ utils/config.ml: utils/config.mlp config/Makefile Makefile
 	    $(call SUBST,CCOMPTYPE) \
 	    $(call SUBST,CC_PROFILE) \
 	    $(call SUBST,OUTPUTOBJ) \
+	    $(call SUBST,EXTRACT_FEATURES) \
 	    $(call SUBST,EXT_ASM) \
 	    $(call SUBST,EXT_DLL) \
 	    $(call SUBST,EXE) \
@@ -855,6 +865,13 @@ partialclean::
 	rm -f parsing/parser.mli parsing/parser.ml parsing/parser.output
 
 beforedepend:: parsing/parser.mli parsing/parser.ml
+
+# Sexp Libraries
+sexp/sexp_lexer.ml: sexp/sexp_lexer.mll
+	$(CAMLLEX) $<
+
+sexp/sexp_parser.ml sexp/sexp_parser.mli: sexp/sexp_parser.mly
+	menhir $<
 
 # The lexer
 

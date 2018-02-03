@@ -65,6 +65,7 @@ with_cfi=true
 flambda=false
 force_safe_string=false
 default_safe_string=true
+extract_features=false
 afl_instrument=false
 max_testsuite_dir_retries=0
 with_cplugins=false
@@ -208,6 +209,8 @@ while : ; do
         flambda=true;;
     -with-cplugins|--with-cplugins)
         with_cplugins=true;;
+    -extract-features|--extract-features)
+        extract_features=true;;
     -no-cplugins|--no-cplugins)
         ;; # Ignored for backward compatibility
     -fPIC|--fPIC)
@@ -2133,6 +2136,7 @@ if [ "$ostype" = Cygwin ]; then
 fi
 config FLAMBDA "$flambda"
 config FORCE_SAFE_STRING "$force_safe_string"
+config EXTRACT_FEATURES "$extract_features"
 config DEFAULT_SAFE_STRING "$default_safe_string"
 config WINDOWS_UNICODE "0"
 config AFL_INSTRUMENT "$afl_instrument"
@@ -2266,6 +2270,11 @@ else
   fi
   if $flat_float_array; then
   inf "        flat float arrays ........ yes"
+  if test "$extract_features" = "true"; then
+  inf "        extracting features . yes"
+  else
+  inf "        extracting features . no"
+  fi
   else
   inf "        flat float arrays ........ no"
   fi

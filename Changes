@@ -1,3 +1,4 @@
+<<<<<<< HEAD
 OCaml 4.06.0 (3 Nov 2017):
 --------------------------
 
@@ -765,6 +766,8 @@ OCaml 4.06.0 (3 Nov 2017):
 - GPR#1407: Fix raw_spacetime_lib
   (Leo White, review by Gabriel Scherer and Damien Doligez)
 
+=======
+>>>>>>> master
 OCaml 4.05.0 (13 Jul 2017):
 ---------------------------
 
@@ -1293,15 +1296,26 @@ The complete list of changes is listed below.
 - MPR#7443, GPR#990: spurious unused open warning with local open in patterns
   (Florian Angeletti, report by Gabriel Scherer)
 
+<<<<<<< HEAD
+=======
+- MPR#7504: fix warning 8 with unconstrained records
+  (Florian Angeletti, report by John Whitington)
+
+>>>>>>> master
 - MPR#7456, GPR#1092: fix slow compilation on source files containing a lot
   of similar debugging information location entries
   (Mark Shinwell)
 
+<<<<<<< HEAD
 - MPR#7504: fix warning 8 with unconstrained records
   (Florian Angeletti, report by John Whitington)
 
 - MPR#7511, GPR#1133: Unboxed type with unboxed argument should not be accepted
   (Damien Doligez, review by Jeremy Yallop and Leo White)
+=======
+- GPR#795: remove 256-character limitation on Sys.executable_name
+  (Xavier Leroy)
+>>>>>>> master
 
 - GPR#805, GPR#815, GPR#833: check for integer overflow in String.concat
   (Jeremy Yallop,
@@ -1342,9 +1356,12 @@ The complete list of changes is listed below.
   (Mark Shinwell, Leo White, review by Xavier Leroy)
 
 * GPR#1088: Gc.minor_words now returns accurate numbers.
+<<<<<<< HEAD
   (compatibility: the .mli declaration of `Gc.minor_words`
    and `Gc.get_minor_free` changed, which may break libraries
    re-exporting these values.)
+=======
+>>>>>>> master
   (Stephen Dolan, review by Pierre Chambart and Xavier Leroy)
 
 OCaml 4.04.2 (23 Jun 2017):
