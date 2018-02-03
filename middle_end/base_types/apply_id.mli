@@ -10,15 +10,23 @@
     importing cmx files.
 *)
 
-type label =
-  | Plain_apply
-  | Over_application
+type label = [ `Plain_apply | `Over_application | `Stub ]
 
-include Identifiable.S
+type stamp =
+  | Plain_apply of int
+  | Over_application of int
+  | Stub
+
+type t = private {
+    compilation_unit : Compilation_unit.t;
+    stamp            : stamp;
+  }
+
+include Identifiable.S with type t := t
 
 val create : ?current_compilation_unit:Compilation_unit.t -> label -> t
 
-val with_label : t -> label -> t
+val change_label : t -> label -> t
 
 val in_compilation_unit : t -> Compilation_unit.t -> bool
 

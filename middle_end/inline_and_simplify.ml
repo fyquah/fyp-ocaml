@@ -873,7 +873,7 @@ and simplify_over_application env r ~args ~args_approxs ~function_decls
     Flambda.create_let func_var (Expr expr)
       (Apply { func = func_var; args = remaining_args; kind = Indirect; dbg;
         inline = inline_requested; specialise = specialise_requested;
-        apply_id = Apply_id.with_label apply_id Apply_id.Over_application })
+        apply_id = Apply_id.change_label apply_id `Over_application })
   in
   let expr = Lift_code.lift_lets_expr expr ~toplevel:true in
   simplify (E.set_never_inline env) r expr

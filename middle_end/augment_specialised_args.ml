@@ -468,7 +468,7 @@ module Make (T : S) = struct
     let wrapper_body, benefit =
       let apply : Flambda.expr =
         Apply {
-          apply_id = Apply_id.create Apply_id.Plain_apply;
+          apply_id = Apply_id.create `Stub;
           func = new_fun_var;
           args =
             (Parameter.List.vars wrapper_params) @

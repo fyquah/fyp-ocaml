@@ -87,7 +87,7 @@ let make_stub unused var (fun_decl : Flambda.function_declaration)
   let kind = Flambda.Direct (Closure_id.wrap renamed) in
   let body : Flambda.t =
     Apply {
-      apply_id = Apply_id.create Apply_id.Plain_apply;
+      apply_id = Apply_id.create `Stub;
       func = renamed;
       args = Parameter.List.vars args;
       kind;
