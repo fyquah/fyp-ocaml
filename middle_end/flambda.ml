@@ -26,6 +26,7 @@ type const =
   | Const_pointer of int
 
 type apply = {
+  apply_id: Apply_id.t;
   func : Variable.t;
   args : Variable.t list;
   kind : call_kind;

@@ -187,6 +187,7 @@ let inline_by_copying_function_declaration ~env ~r
     ~lhs_of_application
     ~(inline_requested : Lambda.inline_attribute)
     ~closure_id_being_applied
+    ~(apply_id: Apply_id.t)
     ~(function_decl : Flambda.function_declaration)
     ~args ~args_approxs
     ~(invariant_params:Variable.Set.t Variable.Map.t lazy_t)
@@ -511,6 +512,7 @@ let inline_by_copying_function_declaration ~env ~r
           (Set_of_closures set_of_closures)
           (Flambda.create_let func (Project_closure project_closure)
             (Apply {
+              apply_id;
               func;
               args;
               kind = Direct closure_id_being_applied;

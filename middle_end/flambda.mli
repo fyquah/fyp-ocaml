@@ -38,6 +38,7 @@ type const =
 type apply = {
   (* CR-soon mshinwell: rename func -> callee, and
      lhs_of_application -> callee *)
+  apply_id: Apply_id.t;
   func : Variable.t;
   args : Variable.t list;
   kind : call_kind;

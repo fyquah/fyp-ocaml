@@ -297,7 +297,7 @@ let inline env r ~lhs_of_application
       end
     end
 
-let specialise env r ~lhs_of_application
+let specialise env r ~lhs_of_application ~apply_id
       ~(function_decls : Flambda.function_declarations)
       ~(function_decl : Flambda.function_declaration)
       ~closure_id_being_applied
@@ -394,8 +394,8 @@ let specialise env r ~lhs_of_application
       let copied_function_declaration =
         Inlining_transforms.inline_by_copying_function_declaration ~env
           ~r:(R.reset_benefit r) ~lhs_of_application
-          ~function_decls ~closure_id_being_applied ~function_decl
-          ~args ~args_approxs
+          ~function_decls ~closure_id_being_applied ~apply_id
+          ~function_decl ~args ~args_approxs
           ~invariant_params:value_set_of_closures.invariant_params
           ~specialised_args:value_set_of_closures.specialised_args
           ~direct_call_surrogates:value_set_of_closures.direct_call_surrogates
@@ -490,7 +490,7 @@ let specialise env r ~lhs_of_application
     end
 
 let for_call_site ~env ~r ~(function_decls : Flambda.function_declarations)
-      ~lhs_of_application ~closure_id_being_applied
+      ~lhs_of_application ~closure_id_being_applied ~apply_id
       ~(function_decl : Flambda.function_declaration)
       ~(value_set_of_closures : Simple_value_approx.value_set_of_closures)
       ~args ~args_approxs ~dbg ~simplify ~inline_requested
@@ -515,6 +515,7 @@ let for_call_site ~env ~r ~(function_decls : Flambda.function_declarations)
   in
   let original =
     Flambda.Apply {
+      apply_id;
       func = lhs_of_application;
       args;
       kind = Direct closure_id_being_applied;
@@ -603,7 +604,7 @@ let for_call_site ~env ~r ~(function_decls : Flambda.function_declarations)
                   ~backend:(E.backend env))))
         in
         let specialise_result =
-          specialise env r ~lhs_of_application ~function_decls ~recursive
+          specialise env r ~apply_id ~lhs_of_application ~function_decls ~recursive
             ~closure_id_being_applied ~function_decl ~value_set_of_closures
             ~args ~args_approxs ~dbg ~simplify ~original ~inline_requested
             ~specialise_requested ~fun_cost ~self_call ~inlining_threshold

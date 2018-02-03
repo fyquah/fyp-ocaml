@@ -86,6 +86,7 @@ let tupled_function_call_stub original_params unboxed_version ~closure_bound_var
         dbg = Debuginfo.none;
         inline = Default_inline;
         specialise = Default_specialise;
+        apply_id = Apply_id.create Apply_id.Plain_apply;
       })
   in
   let _, body =
@@ -235,6 +236,7 @@ let rec close t env (lam : Lambda.lambda) : Flambda.t =
               dbg = Debuginfo.from_location ap_loc;
               inline = ap_inlined;
               specialise = ap_specialised;
+              apply_id = Apply_id.create Apply_id.Plain_apply;
             })))
   | Lletrec (defs, body) ->
     let env =

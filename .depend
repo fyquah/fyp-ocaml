@@ -1339,8 +1339,8 @@ middle_end/flambda.cmo : middle_end/base_types/variable.cmi \
     middle_end/base_types/compilation_unit.cmi \
     middle_end/base_types/closure_origin.cmi \
     middle_end/base_types/closure_id.cmi utils/clflags.cmi \
-    parsing/asttypes.cmi middle_end/allocated_const.cmi \
-    middle_end/flambda.cmi
+    parsing/asttypes.cmi middle_end/base_types/apply_id.cmi \
+    middle_end/allocated_const.cmi middle_end/flambda.cmi
 middle_end/flambda.cmx : middle_end/base_types/variable.cmx \
     middle_end/base_types/tag.cmx middle_end/base_types/symbol.cmx \
     middle_end/base_types/static_exception.cmx \
@@ -1352,8 +1352,8 @@ middle_end/flambda.cmx : middle_end/base_types/variable.cmx \
     middle_end/base_types/compilation_unit.cmx \
     middle_end/base_types/closure_origin.cmx \
     middle_end/base_types/closure_id.cmx utils/clflags.cmx \
-    parsing/asttypes.cmi middle_end/allocated_const.cmx \
-    middle_end/flambda.cmi
+    parsing/asttypes.cmi middle_end/base_types/apply_id.cmx \
+    middle_end/allocated_const.cmx middle_end/flambda.cmi
 middle_end/flambda.cmi : middle_end/base_types/variable.cmi \
     middle_end/base_types/tag.cmi middle_end/base_types/symbol.cmi \
     middle_end/base_types/static_exception.cmi \
@@ -1364,7 +1364,7 @@ middle_end/flambda.cmi : middle_end/base_types/variable.cmi \
     utils/identifiable.cmi middle_end/debuginfo.cmi \
     middle_end/base_types/closure_origin.cmi \
     middle_end/base_types/closure_id.cmi parsing/asttypes.cmi \
-    middle_end/allocated_const.cmi
+    middle_end/base_types/apply_id.cmi middle_end/allocated_const.cmi
 middle_end/flambda_invariants.cmo : middle_end/base_types/variable.cmi \
     middle_end/base_types/var_within_closure.cmi \
     middle_end/base_types/tag.cmi middle_end/base_types/symbol.cmi \
@@ -1921,6 +1921,14 @@ middle_end/unbox_specialised_args.cmx : middle_end/base_types/variable.cmx \
 middle_end/unbox_specialised_args.cmi : middle_end/base_types/variable.cmi \
     middle_end/inlining_cost.cmi middle_end/inline_and_simplify_aux.cmi \
     middle_end/flambda.cmi
+middle_end/base_types/apply_id.cmo : utils/identifiable.cmi \
+    middle_end/base_types/compilation_unit.cmi \
+    middle_end/base_types/apply_id.cmi
+middle_end/base_types/apply_id.cmx : utils/identifiable.cmx \
+    middle_end/base_types/compilation_unit.cmx \
+    middle_end/base_types/apply_id.cmi
+middle_end/base_types/apply_id.cmi : utils/identifiable.cmi \
+    middle_end/base_types/compilation_unit.cmi
 middle_end/base_types/closure_element.cmo : \
     middle_end/base_types/variable.cmi \
     middle_end/base_types/closure_element.cmi

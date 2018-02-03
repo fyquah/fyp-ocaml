@@ -27,6 +27,7 @@ val for_call_site
   -> function_decls:Flambda.function_declarations
   -> lhs_of_application:Variable.t
   -> closure_id_being_applied:Closure_id.t
+  -> apply_id: Apply_id.t
   -> function_decl:Flambda.function_declaration
   -> value_set_of_closures:Simple_value_approx.value_set_of_closures
   -> args:Variable.t list

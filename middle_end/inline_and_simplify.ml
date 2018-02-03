@@ -747,21 +747,22 @@ and simplify_apply env r ~(apply : Flambda.apply) : Flambda.t * R.t =
           in
           let nargs = List.length args in
           let arity = Flambda_utils.function_arity function_decl in
+          let apply_id = apply.apply_id in
           let result, r =
             if nargs = arity then
-              simplify_full_application env r ~function_decls
+              simplify_full_application env r ~function_decls ~apply_id
                 ~lhs_of_application ~closure_id_being_applied ~function_decl
                 ~value_set_of_closures ~args ~args_approxs ~dbg
                 ~inline_requested ~specialise_requested
             else if nargs > arity then
-              simplify_over_application env r ~args ~args_approxs
+              simplify_over_application env r ~args ~args_approxs ~apply_id
                 ~function_decls ~lhs_of_application ~closure_id_being_applied
                 ~function_decl ~value_set_of_closures ~dbg ~inline_requested
                 ~specialise_requested
             else if nargs > 0 && nargs < arity then
               simplify_partial_application env r ~lhs_of_application
                 ~closure_id_being_applied ~function_decl ~args ~dbg
-                ~inline_requested ~specialise_requested
+                ~apply_id ~inline_requested ~specialise_requested
             else
               Misc.fatal_errorf "Function with arity %d when simplifying \
                   application expression: %a"
@@ -769,19 +770,21 @@ and simplify_apply env r ~(apply : Flambda.apply) : Flambda.t * R.t =
           in
           wrap result, r
         | Wrong ->  (* Insufficient approximation information to simplify. *)
+          let apply_id = apply.apply_id in
           Apply ({ func = lhs_of_application; args; kind = Indirect; dbg;
+              apply_id;
               inline = inline_requested; specialise = specialise_requested; }),
             ret r (A.value_unknown Other)))
 
-and simplify_full_application env r ~function_decls ~lhs_of_application
+and simplify_full_application env r ~function_decls ~lhs_of_application ~apply_id
       ~closure_id_being_applied ~function_decl ~value_set_of_closures ~args
       ~args_approxs ~dbg ~inline_requested ~specialise_requested =
-  Inlining_decision.for_call_site ~env ~r ~function_decls
+  Inlining_decision.for_call_site ~env ~r ~function_decls ~apply_id
     ~lhs_of_application ~closure_id_being_applied ~function_decl
     ~value_set_of_closures ~args ~args_approxs ~dbg ~simplify
     ~inline_requested ~specialise_requested
 
-and simplify_partial_application env r ~lhs_of_application
+and simplify_partial_application env r ~apply_id ~lhs_of_application
       ~closure_id_being_applied ~function_decl ~args ~dbg
       ~inline_requested ~specialise_requested =
   let arity = Flambda_utils.function_arity function_decl in
@@ -820,6 +823,7 @@ and simplify_partial_application env r ~lhs_of_application
   let wrapper_accepting_remaining_args =
     let body : Flambda.t =
       Apply {
+        apply_id;
         func = lhs_of_application;
         args = Parameter.List.vars freshened_params;
         kind = Direct closure_id_being_applied;
@@ -847,7 +851,7 @@ and simplify_partial_application env r ~lhs_of_application
   simplify env r with_known_args
 
 and simplify_over_application env r ~args ~args_approxs ~function_decls
-      ~lhs_of_application ~closure_id_being_applied ~function_decl
+      ~lhs_of_application ~closure_id_being_applied ~apply_id ~function_decl
       ~value_set_of_closures ~dbg ~inline_requested ~specialise_requested =
   let arity = Flambda_utils.function_arity function_decl in
   assert (arity < List.length args);
@@ -860,7 +864,7 @@ and simplify_over_application env r ~args ~args_approxs ~function_decls
   in
   let expr, r =
     simplify_full_application env r ~function_decls ~lhs_of_application
-      ~closure_id_being_applied ~function_decl ~value_set_of_closures
+      ~closure_id_being_applied ~apply_id ~function_decl ~value_set_of_closures
       ~args:full_app_args ~args_approxs:full_app_approxs ~dbg
       ~inline_requested ~specialise_requested
   in
@@ -868,7 +872,8 @@ and simplify_over_application env r ~args ~args_approxs ~function_decls
   let expr : Flambda.t =
     Flambda.create_let func_var (Expr expr)
       (Apply { func = func_var; args = remaining_args; kind = Indirect; dbg;
-        inline = inline_requested; specialise = specialise_requested; })
+        inline = inline_requested; specialise = specialise_requested;
+        apply_id = Apply_id.with_label apply_id Apply_id.Over_application })
   in
   let expr = Lift_code.lift_lets_expr expr ~toplevel:true in
   simplify (E.set_never_inline env) r expr

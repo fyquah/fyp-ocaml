@@ -92,6 +92,7 @@ val inline_by_copying_function_declaration
   -> lhs_of_application:Variable.t
   -> inline_requested:Lambda.inline_attribute
   -> closure_id_being_applied:Closure_id.t
+  -> apply_id: Apply_id.t
   -> function_decl:Flambda.function_declaration
   -> args:Variable.t list
   -> args_approxs:Simple_value_approx.t list
