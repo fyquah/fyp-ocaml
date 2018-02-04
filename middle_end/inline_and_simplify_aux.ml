@@ -50,6 +50,9 @@ module Env = struct
     call_context_stack: Feature_extractor.call_context list;
     original_function_size_stack : int list;  (* Note : doesn't include size of inlined stuff *)
     original_bound_vars_stack : int list;
+
+    (* for custom inlining decisions *)
+    overrides: Data_collector.t list;
   }
 
   let bump_offset t = { t with call_site_offset = ref Call_site.Offset.base }
@@ -58,7 +61,7 @@ module Env = struct
 
   let call_context_stack t = t.call_context_stack
 
-  let create ~never_inline ~backend ~round ~current_function =
+  let create ~never_inline ~backend ~round ~current_function ~overrides =
     { backend;
       call_site_offset = ref Call_site.Offset.base;
       round;
@@ -85,6 +88,7 @@ module Env = struct
       call_context_stack = [];
       original_function_size_stack = [];
       original_bound_vars_stack = [];
+      overrides;
     }
 
   let inlining_stack t = t.inlining_stack

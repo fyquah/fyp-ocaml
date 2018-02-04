@@ -17,10 +17,16 @@ type stamp =
   | Over_application of int
   | Stub
 
+val sexp_of_stamp : stamp -> Sexp.t
+val stamp_of_sexp : Sexp.t -> stamp
+
 type t = private {
     compilation_unit : Compilation_unit.t;
     stamp            : stamp;
   }
+
+val sexp_of_t : t -> Sexp.t
+val t_of_sexp : Sexp.t -> t
 
 include Identifiable.S with type t := t
 

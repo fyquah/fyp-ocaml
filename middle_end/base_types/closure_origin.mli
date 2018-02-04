@@ -20,3 +20,6 @@ val create : Closure_id.t -> t
 
 val get_compilation_unit : t -> Compilation_unit.t
 val rename : (Closure_id.t -> Closure_id.t) -> t -> t
+
+val sexp_of_t : t -> Sexp.t
+val t_of_sexp : Sexp.t -> t

@@ -5,10 +5,44 @@ type stamp =
   | Over_application of int
   | Stub
 
+let sexp_of_stamp stamp = 
+  let open Sexp in
+  match stamp with
+  | Plain_apply x ->
+    List [ Atom "Plain_apply"; Atom (string_of_int x) ]
+  | Over_application x ->
+    List [ Atom "Over_application"; Atom (string_of_int x) ]
+  | Stub ->
+    List [ Atom "Stub" ]
+;;
+
+let stamp_of_sexp stamp =
+  let open Sexp in
+  match stamp with
+  | List [ Atom "Plain_apply"; Atom x ] -> Plain_apply (int_of_string x)
+  | List [ Atom "Over_application"; Atom x ] -> Over_application (int_of_string x)
+  | List [ Atom "Stub" ] -> Stub
+  | _ -> raise (Sexp.Parse_error "oops")
+;;
+
 type t = {
     compilation_unit : Compilation_unit.t;
     stamp            : stamp;
   }
+
+let sexp_of_t t =
+  Sexp.List [
+    Compilation_unit.to_sexp t.compilation_unit;
+    sexp_of_stamp t.stamp;
+  ]
+
+let t_of_sexp = function
+  | Sexp.List [ a; b] ->
+    let compilation_unit = Compilation_unit.of_sexp a in
+    let stamp = stamp_of_sexp b in
+    { compilation_unit; stamp }
+  | _ -> raise (Sexp.Parse_error "oops")
+
 
 let get_stamp_exn = function
   | Plain_apply a

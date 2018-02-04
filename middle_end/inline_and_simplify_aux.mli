@@ -34,6 +34,7 @@ module Env : sig
     -> backend:(module Backend_intf.S)
     -> round:int
     -> current_function: Closure_id.t option
+    -> overrides: Data_collector.Overrides.t
     -> t
 
   val bump_offset : t -> t

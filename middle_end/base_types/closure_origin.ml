@@ -20,3 +20,6 @@ include Closure_id
 
 let create t = t
 let rename f t = f t
+
+let sexp_of_t t = Closure_id.sexp_of_t t
+let t_of_sexp s = Closure_id.t_of_sexp s
