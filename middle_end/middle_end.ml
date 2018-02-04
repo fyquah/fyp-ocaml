@@ -37,7 +37,7 @@ let middle_end ppf ~prefixname ~backend
     ~module_initializer =
   if !Clflags.exhaustive_inlining then begin
     Printf.fprintf stderr ">>> EXHAUSTIVE INLINING <<<\n"
-  end
+  end;
   Profile.record_call "flambda" (fun () ->
     let previous_warning_printer = !Location.warning_printer in
     let module WarningSet =

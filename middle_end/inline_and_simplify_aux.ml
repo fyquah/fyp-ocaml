@@ -109,8 +109,9 @@ module Env = struct
     let max_level =
       Clflags.Int_arg_helper.get ~key:(env.round) !Clflags.inline_max_depth
     in
+    Printf.printf "%d; %d\n" env.inlining_level max_level;
     if (env.inlining_level + 1) > max_level then
-      Misc.fatal_error "Inlining level increased above maximum";
+      Misc.fatal_errorf "Inlining level increased above maximum (current: %d; max: %d)" env.inlining_level max_level;
     { env with inlining_level = env.inlining_level + 1 }
 
   let print ppf t =
@@ -366,13 +367,13 @@ module Env = struct
   let inside_inlined_function t applied  =
     let inlining_count =
       try
-        Closure_origin.Map.find id t.inlining_counts
+        Closure_origin.Map.find applied t.inlining_counts
       with Not_found ->
         max 1 (Clflags.Int_arg_helper.get
                  ~key:t.round !Clflags.inline_max_unroll)
     in
     let inlining_counts =
-      Closure_origin.Map.add id (inlining_count - 1) t.inlining_counts
+      Closure_origin.Map.add applied (inlining_count - 1) t.inlining_counts
     in
     { t with inlining_counts }
 

@@ -80,6 +80,14 @@ module Env : sig
       environment" case is to be handled by the caller. *)
   val find_opt : t -> Variable.t -> Simple_value_approx.t option
 
+  (** FYP STUFF: Returns which closure origin we are currently in. If
+                 we are simplifying things in a function declaration, then
+                 this is the declaration's Closure Origin. If we are
+                 inlining a function call, this is going to be the inlined
+                 function.
+   **)
+  val current_function : t -> Closure_id.t option
+
   (** Like [find_exn], but for a list of variables. *)
   val find_list_exn : t -> Variable.t list -> Simple_value_approx.t list
 

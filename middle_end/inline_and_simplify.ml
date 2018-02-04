@@ -606,6 +606,8 @@ and simplify_set_of_closures original_env r
           assert (E.inside_set_of_closures_declaration
             function_decls.set_of_closures_origin body_env);
           simplify body_env r function_decl.body)
+        ~lambda_size
+        ~bound_vars
     in
     let inline : Lambda.inline_attribute =
       match function_decl.inline with
@@ -754,12 +756,12 @@ and simplify_apply env r ~(apply : Flambda.apply) : Flambda.t * R.t =
           let apply_id = apply.apply_id in
           let result, r =
             if nargs = arity then
-              simplify_full_application env r ~function_decls ~apply_id
+              simplify_full_application env r ~function_decls ~apply_id ~call_kind:kind
                 ~lhs_of_application ~closure_id_being_applied ~function_decl
                 ~value_set_of_closures ~args ~args_approxs ~dbg
                 ~inline_requested ~specialise_requested
             else if nargs > arity then
-              simplify_over_application env r ~args ~args_approxs ~apply_id
+              simplify_over_application env r ~args ~args_approxs ~apply_id ~kind
                 ~function_decls ~lhs_of_application ~closure_id_being_applied
                 ~function_decl ~value_set_of_closures ~dbg ~inline_requested
                 ~specialise_requested
@@ -780,13 +782,13 @@ and simplify_apply env r ~(apply : Flambda.apply) : Flambda.t * R.t =
               inline = inline_requested; specialise = specialise_requested; }),
             ret r (A.value_unknown Other)))
 
-and simplify_full_application env r ~function_decls ~lhs_of_application ~apply_id ~kind
+and simplify_full_application env r ~function_decls ~lhs_of_application ~apply_id ~call_kind
       ~closure_id_being_applied ~function_decl ~value_set_of_closures ~args
       ~args_approxs ~dbg ~inline_requested ~specialise_requested =
   Inlining_decision.for_call_site ~env ~r ~function_decls ~apply_id
     ~lhs_of_application ~closure_id_being_applied ~function_decl
     ~value_set_of_closures ~args ~args_approxs ~dbg ~simplify
-    ~inline_requested ~specialise_requested
+    ~inline_requested ~specialise_requested ~call_kind
 
 and simplify_partial_application env r ~apply_id ~lhs_of_application
       ~closure_id_being_applied ~function_decl ~args ~dbg
@@ -867,7 +869,7 @@ and simplify_over_application env r ~args ~args_approxs ~function_decls ~kind
     Misc.Stdlib.List.split_at arity args_approxs
   in
   let expr, r =
-    simplify_full_application env r ~function_decls ~lhs_of_application
+    simplify_full_application env r ~function_decls ~lhs_of_application ~call_kind:kind
       ~closure_id_being_applied ~apply_id ~function_decl ~value_set_of_closures
       ~args:full_app_args ~args_approxs:full_app_approxs ~dbg
       ~inline_requested ~specialise_requested

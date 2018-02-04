@@ -118,7 +118,8 @@ let actually_extract_features
     let specialized_args =
       Variable.Map.fold
         (fun var _ acc ->
-          if List.exists (fun param -> Variable.equal param var) params
+          if List.exists (fun param ->
+            Variable.equal (Parameter.var param) var) params
           then acc else acc + 1)
         value_set_of_closures.specialised_args 0
     in
@@ -440,7 +441,7 @@ let inline env r ~kind ~call_site ~lhs_of_application
          recursive to avoid having to check whether or not it is recursive *)
       E.inside_unrolled_function env function_decls.set_of_closures_origin
     in
-    let env = E.inside_inlined_function env closure_id_being_applied in
+    let env = E.inside_inlined_function env function_decl.closure_origin in
     let env =
       if E.inlining_level env = 0
          (* If the function was considered for inlining without considering
@@ -521,7 +522,7 @@ let inline env r ~kind ~call_site ~lhs_of_application
              recursive to avoid having to check whether or not it is recursive *)
           E.inside_unrolled_function env function_decls.set_of_closures_origin
         in
-        let env = E.inside_inlined_function env closure_id_being_applied in
+        let env = E.inside_inlined_function env function_decl.closure_origin in
         let env =
           if E.inlining_level env = 0
              (* If the function was considered for inlining without considering
@@ -791,8 +792,9 @@ let specialise env r ~lhs_of_application ~apply_id
         Original decision
     end
 
-let for_call_site ~env ~r ~(function_decls : Flambda.function_declarations)
-      ~lhs_of_application ~closure_id_being_applied ~apply_id ~kind
+let for_call_site
+      ~call_kind:kind ~env ~r ~(function_decls : Flambda.function_declarations)
+      ~lhs_of_application ~closure_id_being_applied ~apply_id
       ~(function_decl : Flambda.function_declaration)
       ~(value_set_of_closures : Simple_value_approx.value_set_of_closures)
       ~args ~args_approxs ~dbg ~simplify ~inline_requested
@@ -855,8 +857,6 @@ let for_call_site ~env ~r ~(function_decls : Flambda.function_declarations)
     R.set_approx (R.seen_direct_application r) (A.value_unknown Other)
   in
   if function_decl.stub then begin
-    if not !blabla then
-      Format.printf "-> Stub\n";
     let body, r =
       Inlining_transforms.inline_by_copying_function_body ~env
         ~r ~function_decls ~lhs_of_application
@@ -867,14 +867,11 @@ let for_call_site ~env ~r ~(function_decls : Flambda.function_declarations)
     let env = E.inside_inlined_stub env applied call_site in
     simplify env r body
   end else if E.never_inline env then begin
-    if not !blabla then
-      Format.printf "-> Never inline %a\n" Call_site.pprint call_site;
     (* This case only occurs when examining the body of a stub function
        but not in the context of inlining said function.  As such, there
        is nothing to do here (and no decision to report). *)
     original, original_r
   end else begin
-    if not !blabla then Format.printf "-> Regular\n";
     let env = E.unset_never_inline_inside_closures env in
     let env =
       E.note_entering_call env

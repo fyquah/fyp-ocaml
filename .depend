@@ -2385,6 +2385,21 @@ toplevel/trace.cmx : typing/types.cmx toplevel/toploop.cmx \
     parsing/asttypes.cmi toplevel/trace.cmi
 toplevel/trace.cmi : typing/types.cmi typing/path.cmi parsing/longident.cmi \
     typing/env.cmi
+sexp/main.cmo : sexp/sexp_parser.cmi sexp/sexp_lexer.cmo sexp/sexp.cmi
+sexp/main.cmx : sexp/sexp_parser.cmx sexp/sexp_lexer.cmx sexp/sexp.cmx
+sexp/sexp.cmo : sexp/sexp.cmi
+sexp/sexp.cmx : sexp/sexp.cmi
+sexp/sexp.cmi :
+sexp/sexp_file.cmo : sexp/sexp_parser.cmi sexp/sexp_lexer.cmo sexp/sexp.cmi \
+    sexp/sexp_file.cmi
+sexp/sexp_file.cmx : sexp/sexp_parser.cmx sexp/sexp_lexer.cmx sexp/sexp.cmx \
+    sexp/sexp_file.cmi
+sexp/sexp_file.cmi : sexp/sexp.cmi
+sexp/sexp_lexer.cmo : sexp/sexp_parser.cmi
+sexp/sexp_lexer.cmx : sexp/sexp_parser.cmx
+sexp/sexp_parser.cmo : sexp/sexp.cmi sexp/sexp_parser.cmi
+sexp/sexp_parser.cmx : sexp/sexp.cmx sexp/sexp_parser.cmi
+sexp/sexp_parser.cmi : sexp/sexp.cmi
 driver/compdynlink.cmx : asmcomp/cmx_format.cmi driver/compdynlink.cmi
 driver/compdynlink.cmo : bytecomp/symtable.cmi bytecomp/opcodes.cmo \
     utils/misc.cmi bytecomp/meta.cmi bytecomp/dll.cmi utils/consistbl.cmi \
