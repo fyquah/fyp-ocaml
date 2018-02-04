@@ -198,6 +198,8 @@ let middle_end ppf ~prefixname ~backend
            check flam;
            (* CR-someday mshinwell: add -d... option for this *)
            (* dump_function_sizes flam ~backend; *)
+
+           (* ===== FYP HACK : Feature extraction ==== *)
            let data_collection_path =
              Printf.sprintf "%s/fyp/data-collected" (Sys.getenv "HOME")
            in
@@ -233,6 +235,7 @@ let middle_end ppf ~prefixname ~backend
              output_value oc !Feature_extractor.mined_features;
              close_out oc
            end;
+           (* ===== END OF FYP HACK ==== *)
 
            flam))
       )

@@ -380,6 +380,8 @@ let inline env r ~kind ~call_site ~lhs_of_application
       Try_it
     end
   in
+
+  (* ===== This is to look for inlining overrides ===== *)
   let call_stack = call_site :: E.inlining_stack env in
   let applied = closure_id_being_applied in
   let found =
@@ -389,7 +391,6 @@ let inline env r ~kind ~call_site ~lhs_of_application
       | Don't_try_it Annotation
       | Don't_try_it Self_call
       | Don't_try_it Above_threshold _ -> false
-
       | Don't_try_it Classic_mode
       | Don't_try_it Override
       | Don't_try_it Without_subfunctions _
@@ -405,6 +406,8 @@ let inline env r ~kind ~call_site ~lhs_of_application
     else
       None
   in
+  (* ===== END OF FYP HACK ===== *)
+
   match found with
   | Some true  ->
     let body, r_inlined =
@@ -556,6 +559,7 @@ let inline env r ~kind ~call_site ~lhs_of_application
            no opportunities for inlining. *)
           Original (S.Not_inlined.Without_subfunctions wsb)
         end else begin
+          (* Why is this even here? *)
           let env = E.inlining_level_up env in
           let env =
             E.note_entering_inlined env closure_id_being_applied call_site
@@ -905,11 +909,12 @@ let for_call_site
       | Can_inline_if_no_larger_than _ -> false
     in
     let simpl =
+      Printf.printf "Here := %d\n" (E.inlining_level env);
       if inlining_prevented then
         Original (D.Prevented Function_prevented_from_inlining)
-      else if E.inlining_level env >= max_level then
+      else if E.inlining_level env >= max_level then begin
         Original (D.Prevented Level_exceeded)
-      else begin
+      end else begin
         let self_call =
           E.inside_set_of_closures_declaration
             function_decls.set_of_closures_origin env
@@ -958,6 +963,7 @@ let for_call_site
                   A.print_value_set_of_closures value_set_of_closures
           in
           let inline_result =
+            Printf.printf "before calling inline: %d\n" (E.inlining_level env);
             inline env r ~kind ~call_site ~function_decls ~lhs_of_application
               ~closure_id_being_applied ~function_decl ~value_set_of_closures
               ~only_use_of_function ~original ~recursive
