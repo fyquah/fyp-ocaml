@@ -101,6 +101,9 @@ let make_package_object ppf members targetobj targetname coercion
     let prefixname = Filename.remove_extension objtemp in
     if Config.flambda then begin
       let size, lam = Translmod.transl_package_flambda components coercion in
+      let inlining_overrides =
+        Data_collector.Multiversion_overrides.load_from_clflags ()
+      in
       let flam =
         Middle_end.middle_end ppf
           ~prefixname
@@ -109,6 +112,7 @@ let make_package_object ppf members targetobj targetname coercion
           ~filename:targetname
           ~module_ident
           ~module_initializer:lam
+          ~inlining_overrides
       in
       Asmgen.compile_implementation_flambda
         prefixname ~backend ~required_globals:Ident.Set.empty ppf flam;

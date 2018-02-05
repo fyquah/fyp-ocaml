@@ -16,6 +16,8 @@
 
 [@@@ocaml.warning "+a-4-9-30-40-41-42"]
 
+module DC = Data_collector
+
 module Env = struct
   type scope = Current | Outer
 
@@ -27,11 +29,11 @@ module Env = struct
     approx_mutable : Simple_value_approx.t Mutable_variable.Map.t;
     approx_sym : Simple_value_approx.t Symbol.Map.t;
     projections : Variable.t Projection.Map.t;
-    current_function : Closure_id.t option;
+    current_closure : DC.Function_metadata.t option;
     current_functions : Set_of_closures_origin.Set.t;
     (* The functions currently being declared: used to avoid inlining
        recursively *)
-    inlining_stack: Call_site.t list;
+    inlining_stack: (Call_site.t * DC.Trace_item.t) list;
     inlining_level : int;
     (* Number of times "inline" has been called recursively *)
     inside_branch : int;
@@ -52,7 +54,7 @@ module Env = struct
     original_bound_vars_stack : int list;
 
     (* for custom inlining decisions *)
-    overrides: Data_collector.t list;
+    overrides: Data_collector.Multiversion_overrides.t;
   }
 
   let bump_offset t = { t with call_site_offset = ref Call_site.Offset.base }
@@ -61,7 +63,7 @@ module Env = struct
 
   let call_context_stack t = t.call_context_stack
 
-  let create ~never_inline ~backend ~round ~current_function ~overrides =
+  let create ~never_inline ~backend ~round ~current_function:current_closure ~overrides =
     { backend;
       call_site_offset = ref Call_site.Offset.base;
       round;
@@ -69,7 +71,7 @@ module Env = struct
       approx_mutable = Mutable_variable.Map.empty;
       approx_sym = Symbol.Map.empty;
       projections = Projection.Map.empty;
-      current_function;
+      current_closure;
       current_functions = Set_of_closures_origin.Set.empty;
       inlining_level = 0;
       inlining_stack = [];
@@ -91,7 +93,9 @@ module Env = struct
       overrides;
     }
 
-  let inlining_stack t = t.inlining_stack
+  let inlining_stack t = List.map fst t.inlining_stack
+  let inlining_trace t = List.map snd t.inlining_stack
+  let overrides t = t.overrides
 
   let backend t = t.backend
   let round t = t.round
@@ -254,7 +258,7 @@ module Env = struct
                 (snd (Variable.Map.find id t.approx)))
     with Not_found -> None
 
-  let current_function t = t.current_function
+  let current_closure t = t.current_closure
 
   let activate_freshening t =
     { t with freshening = Freshening.activate t.freshening }
@@ -404,7 +408,12 @@ module Env = struct
             t.inlining_stats_closure_stack ~closure_id ~dbg;
       }
 
-  let note_entering_inlined t closure_id call_site =
+  let unpack_closure = function
+    | DC.Trace_item.Enter_decl { declared; _ } -> declared
+    | DC.Trace_item.At_call_site { applied; _ } -> applied
+  ;;
+
+  let note_entering_inlined t call_site =
     let call_site_offset = ref Call_site.Offset.base in
     if t.never_inline then { t with call_site_offset }
     else
@@ -415,13 +424,13 @@ module Env = struct
             t.inlining_stats_closure_stack;
         inlining_stack;
         call_site_offset;
-        current_function = Some closure_id;
+        current_closure = Some (unpack_closure (snd call_site));
       }
 
   let inside_inlined_stub t applied call_site =
     let call_site_offset = ref Call_site.Offset.base in
     let inlining_stack = call_site :: t.inlining_stack in
-    { t with current_function = Some applied;
+    { t with current_closure = Some applied;
              inlining_stack;
              call_site_offset; }
 
@@ -434,24 +443,38 @@ module Env = struct
             t.inlining_stats_closure_stack ~closure_ids;
       }
 
-  let enter_closure t ~closure_id ~inline_inside ~dbg ~f ~lambda_size ~bound_vars =
+  let enter_closure t ~closure_id ~closure_origin ~set_of_closures_id
+        ~inline_inside ~dbg ~f ~lambda_size ~bound_vars =
     let t =
       if inline_inside && not t.never_inline_inside_closures then t
       else set_never_inline t
     in
     let t = unset_never_inline_outside_closures t in
+    let declared =
+      let closure_id = Some closure_id in
+      let set_of_closures_id = Some set_of_closures_id in
+      { DC.Function_metadata.
+        closure_id; set_of_closures_id; closure_origin;
+      }
+    in
     let t =
-      let source =
+      let (v0_source, v1_source) =
         match t.inlining_stack with
-        | [] -> None
+        | [] -> (None, None)
         | hd :: _ ->
-          match hd with
-          | Enter_decl enter_decl -> Some enter_decl.closure
-          | At_call_site at_call_site -> Some at_call_site.applied
+          match fst hd, snd hd with
+          | Call_site.Enter_decl v0, DC.Trace_item.Enter_decl v1 ->
+            (Some v0.closure, Some v1.declared)
+          | Call_site.At_call_site v0, DC.Trace_item.At_call_site v1 ->
+            (Some v0.applied, Some v1.applied)
+          | _, _ -> assert false
       in
-      let inlining_stack =
-        Call_site.enter_decl ~closure:closure_id ~source :: t.inlining_stack
+      let tos =
+        (Call_site.Enter_decl { closure = closure_id; source = v0_source; },
+         DC.Trace_item.Enter_decl { source = v1_source; declared; }
+        )
       in
+      let inlining_stack = tos :: t.inlining_stack in
       let call_context_stack =
         Feature_extractor.In_function_declaration :: t.call_context_stack
       in
@@ -465,7 +488,7 @@ module Env = struct
     in
     let t =
       { t with
-        current_function = Some closure_id;
+        current_closure = Some declared;
         original_function_size_stack; original_bound_vars_stack;
         call_site_offset = ref Call_site.Offset.base;
       }

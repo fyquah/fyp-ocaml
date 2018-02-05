@@ -33,8 +33,8 @@ module Env : sig
      : never_inline:bool
     -> backend:(module Backend_intf.S)
     -> round:int
-    -> current_function: Closure_id.t option
-    -> overrides: Data_collector.Overrides.t
+    -> current_function: Data_collector.Function_metadata.t option
+    -> overrides: Data_collector.Multiversion_overrides.t
     -> t
 
   val bump_offset : t -> t
@@ -42,6 +42,10 @@ module Env : sig
   val next_call_site_offset : t -> (Call_site.Offset.t * t)
 
   val inlining_stack : t -> Call_site.t list
+
+  val inlining_trace : t -> Data_collector.Trace_item.t list
+
+  val overrides : t -> Data_collector.Multiversion_overrides.t
 
   (** Obtain the first-class module that gives information about the
       compiler backend being used for compilation. *)
@@ -87,7 +91,7 @@ module Env : sig
                  inlining a function call, this is going to be the inlined
                  function.
    **)
-  val current_function : t -> Closure_id.t option
+  val current_closure : t -> Data_collector.Function_metadata.t option
 
   (** Like [find_exn], but for a list of variables. *)
   val find_list_exn : t -> Variable.t list -> Simple_value_approx.t list
@@ -218,7 +222,11 @@ module Env : sig
       body of an inlined function. *)
   val inside_inlined_function : t -> Closure_origin.t -> t
 
-  val inside_inlined_stub : t -> Closure_id.t -> Call_site.t -> t
+  val inside_inlined_stub
+     : t
+    -> Data_collector.Function_metadata.t
+    -> (Call_site.t * Data_collector.Trace_item.t)
+    -> t
 
   (** If collecting inlining statistics, record that the inliner is about to
       descend into [closure_id].  This information enables us to produce a
@@ -243,7 +251,11 @@ module Env : sig
    (** If collecting inlining statistics, record that the inliner is about to
        descend into an inlined function call.  This requires that the inliner
        has already entered the call with [note_entering_call]. *)
-  val note_entering_inlined : t -> Closure_id.t -> Call_site.t -> t
+    
+  val note_entering_inlined
+     : t
+    -> (Call_site.t * Data_collector.Trace_item.t)
+    -> t
 
    (** If collecting inlining statistics, record that the inliner is about to
        descend into a specialised function definition.  This requires that the
@@ -257,6 +269,8 @@ module Env : sig
   val enter_closure
      : t
     -> closure_id:Closure_id.t
+    -> closure_origin: Closure_origin.t
+    -> set_of_closures_id: Set_of_closures_id.t
     -> inline_inside:bool
     -> dbg:Debuginfo.t
     -> f:(t -> 'a)

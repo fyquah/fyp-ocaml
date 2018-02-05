@@ -1,5 +1,13 @@
 [@@@ocaml.warning "+a-4-9-30-40-41-42"]
 
+let save_sexp_to_file ~output_prefix ~version sexp =
+  let filename = output_prefix ^ ".data_collector." ^ version ^ ".sexp" in
+  let out_channel = open_out filename in
+  let ppf = Format.formatter_of_out_channel out_channel in
+  Format.fprintf ppf "%a" Sexp.print_mach sexp;
+  close_out out_channel
+;;
+
 module V0 = struct
 
   (* This is wrapped in a module to guranteed principality *)
@@ -17,8 +25,6 @@ module V0 = struct
     }
   
   let (inlining_decisions : t list ref) = ref []
-  
-  let (inlining_overrides : t list ref) = ref []
   
   let sexp_of_t t =
     Sexp.List [
@@ -41,12 +47,8 @@ module V0 = struct
   
   
   let save ~output_prefix =
-    let out_channel = open_out (output_prefix ^ ".data_collector.sexp") in
-    let ppf = Format.formatter_of_out_channel out_channel in
     let sexp = Sexp.sexp_of_list sexp_of_t !inlining_decisions in
-    Format.fprintf ppf "%a" Sexp.print_mach sexp;
-    close_out out_channel;
-    inlining_decisions := []
+    save_sexp_to_file ~version:"v0" ~output_prefix sexp
   ;;
   
   let load_from_channel ic =
@@ -264,6 +266,12 @@ module V1 = struct
       | _ -> raise (Sexp.Parse_error "oops")
 
     let (recorded_from_flambda : t list ref) = ref []
+
+    let save ~output_prefix =
+      let sexp = Sexp.sexp_of_list sexp_of_t !recorded_from_flambda in
+      save_sexp_to_file ~output_prefix ~version:"v1" sexp
+    ;;
+
   end
 
   module Overrides = struct
@@ -294,6 +302,8 @@ module V1 = struct
       | Sexp.List decisions -> List.map Decision.t_of_sexp decisions
       | _ -> raise (Sexp.Parse_error "oops")
     ;;
+
+    let load_from_channel ic = t_of_sexp (Sexp_file.load_from_channel ic)
   end
 end
 
@@ -323,4 +333,20 @@ module Multiversion_overrides = struct
       let (_, query) = query in
       V1.Overrides.find_decision overrides query 
 
+  let load_from_clflags () =
+    match !Clflags.inlining_overrides with
+    | None -> Don't
+    | Some arg ->
+      match String.split_on_char ':' arg with
+      | [ "v0" ; filename ] ->
+        let ic = open_in filename in
+        let ts = V0.load_from_channel ic in
+        V0 ts
+      | [ "v1" ; filename ]
+      | [ filename ] -> 
+        let ic = open_in filename in
+        let ts = V1.Overrides.load_from_channel ic in
+        V1 ts
+      | _ ->
+        Misc.fatal_errorf "Failed to parse -inlining-overrides flag %s" arg
 end

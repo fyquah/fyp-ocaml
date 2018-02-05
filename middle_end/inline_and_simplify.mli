@@ -27,6 +27,7 @@ val run
   -> backend:(module Backend_intf.S)
   -> prefixname:string
   -> round:int
+  -> inlining_overrides: Data_collector.Multiversion_overrides.t
   -> Flambda.program
   -> Flambda.program
 

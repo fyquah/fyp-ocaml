@@ -234,7 +234,7 @@ let extract_features ~kind ~closure_id ~env ~function_decl
   end
 ;;
 
-let inline env r ~kind ~call_site ~lhs_of_application
+let inline env r ~apply_id ~kind ~call_site ~lhs_of_application
     ~(function_decls : Flambda.function_declarations)
     ~closure_id_being_applied ~(function_decl : Flambda.function_declaration)
     ~value_set_of_closures ~only_use_of_function ~original ~recursive
@@ -382,7 +382,8 @@ let inline env r ~kind ~call_site ~lhs_of_application
   in
 
   (* ===== This is to look for inlining overrides ===== *)
-  let call_stack = call_site :: E.inlining_stack env in
+  let call_stack = fst call_site :: E.inlining_stack env in
+  let trace = snd call_site :: E.inlining_trace env in
   let applied = closure_id_being_applied in
   let found =
     let inlining_definitely_terminates () =
@@ -400,20 +401,27 @@ let inline env r ~kind ~call_site ~lhs_of_application
     in
     if E.round env = 0 then
       if (!Clflags.exhaustive_inlining && inlining_definitely_terminates ()) then
-        Some true
+        Some Data_collector.Action.Inline
       else
-        Data_collector.find_decision ~call_stack ~applied
+        let v0_query =
+          { Data_collector.V0.Query. call_stack; applied;  }
+        in
+        let v1_query = { Data_collector.V1.Overrides. trace; apply_id; } in
+        let query = (v0_query, v1_query) in
+        Data_collector.Multiversion_overrides.find_decision (E.overrides env) query
     else
       None
   in
   let always_inline = 
     match found with
-    | Some true -> true
-    | _ -> always_inline
+    | Some Data_collector.Action.Inline -> true
+    | Some Apply
+    | None -> always_inline
   in
   let try_inlining =
     match found with
-    | Some false -> Don't_try_it S.Not_inlined.Override
+    | Some Apply -> Don't_try_it S.Not_inlined.Override
+    | Some Data_collector.Action.Inline
     | _ -> try_inlining
   in
   match try_inlining with
@@ -467,9 +475,7 @@ let inline env r ~kind ~call_site ~lhs_of_application
       let r =
         R.map_benefit r_inlined (Inlining_cost.Benefit.(+) (R.benefit r))
       in
-      let env =
-        E.note_entering_inlined env closure_id_being_applied call_site
-      in
+      let env = E.note_entering_inlined env call_site in
       let env =
         (* We decrement the unrolling count even if the function is not
            recursive to avoid having to check whether or not it is recursive *)
@@ -510,9 +516,7 @@ let inline env r ~kind ~call_site ~lhs_of_application
         Original (S.Not_inlined.Without_subfunctions wsb)
       end else begin
         let env = E.inlining_level_up env in
-        let env =
-          E.note_entering_inlined env closure_id_being_applied call_site
-        in
+        let env = E.note_entering_inlined env call_site in
         let env =
           (* We decrement the unrolling count even if the function is recursive
              to avoid having to check whether or not it is recursive *)
@@ -744,6 +748,12 @@ let specialise env r ~lhs_of_application ~apply_id
         Original decision
     end
 
+module DC = Data_collector
+
+let value_exn = function
+  | None -> assert false
+  | Some x -> x
+
 let for_call_site
       ~call_kind:kind ~env ~r ~(function_decls : Flambda.function_declarations)
       ~lhs_of_application ~closure_id_being_applied ~apply_id
@@ -755,13 +765,23 @@ let for_call_site
   let (call_site_offset, env) =
     E.next_call_site_offset env
   in
+  let applied_function_metadata =
+    { DC.Function_metadata.
+      closure_id = Some closure_id_being_applied;
+      set_of_closures_id = Some function_decls.set_of_closures_id;
+      closure_origin = function_decl.closure_origin;
+    }
+  in
   let call_site =
-    match E.current_function env with
+    let applied = applied_function_metadata in
+    match E.current_closure env with
     | None ->
-      Call_site.create_top_level closure_id_being_applied call_site_offset
-    | Some closure_id ->
-      Call_site.create call_site_offset
-        ~applied:closure_id_being_applied ~source:closure_id
+      (Call_site.create_top_level closure_id_being_applied call_site_offset,
+       DC.Trace_item.At_call_site { source = None; apply_id; applied; })
+    | Some (source_closure : DC.Function_metadata.t) ->
+      let source_closure_id = value_exn source_closure.closure_id in
+      (Call_site.create call_site_offset ~applied:closure_id_being_applied ~source:source_closure_id,
+       DC.Trace_item.At_call_site { source = Some source_closure; applied; apply_id; })
   in
   if List.length args <> List.length args_approxs then begin
     Misc.fatal_error "Inlining_decision.for_call_site: inconsistent lengths \
@@ -815,8 +835,7 @@ let for_call_site
         ~closure_id_being_applied ~specialise_requested ~inline_requested
         ~function_decl ~args ~dbg ~simplify
     in
-    let applied = closure_id_being_applied in
-    let env = E.inside_inlined_stub env applied call_site in
+    let env = E.inside_inlined_stub env applied_function_metadata call_site in
     simplify env r body
   end else if E.never_inline env then begin
     (* This case only occurs when examining the body of a stub function
@@ -911,26 +930,38 @@ let for_call_site
                   A.print_value_set_of_closures value_set_of_closures
           in
           let inline_result =
-            inline env r ~kind ~call_site ~function_decls ~lhs_of_application
+            inline env r ~apply_id ~kind ~call_site ~function_decls ~lhs_of_application
               ~closure_id_being_applied ~function_decl ~value_set_of_closures
               ~only_use_of_function ~original ~recursive
               ~inline_requested ~specialise_requested ~args
               ~size_from_approximation ~dbg ~simplify ~fun_cost ~self_call
               ~inlining_threshold
           in
-          let call_stack = call_site :: E.inlining_stack env in
-          let applied = closure_id_being_applied in
-          let create_datum decision =
-            { Data_collector. applied; call_stack; decision }
+          let trace = snd call_site :: E.inlining_trace env in
+          let call_stack = fst call_site :: E.inlining_stack env in
+          let metadata = applied_function_metadata in
+          let applied = value_exn applied_function_metadata.closure_id in
+          let round = E.round env in
+          let create_v0_datum decision =
+            { DC.V0. call_stack; applied; decision }
+          in
+          let create_datum action =
+            { DC.Decision. round; trace; apply_id; action; metadata; }
           in
           match inline_result with
           | Changed (res, inl_reason) ->
-            Data_collector.inlining_decisions :=
-              create_datum true :: !Data_collector.inlining_decisions;
+            DC.Decision.recorded_from_flambda :=
+              create_datum DC.Action.Inline :: !DC.Decision.recorded_from_flambda;
+            DC.V0.inlining_decisions :=
+              create_v0_datum false :: !DC.V0.inlining_decisions;
+
             Changed (res, D.Inlined (spec_reason, inl_reason))
           | Original inl_reason ->
-            Data_collector.inlining_decisions :=
-              create_datum false :: !Data_collector.inlining_decisions;
+            DC.Decision.recorded_from_flambda :=
+              create_datum DC.Action.Apply :: !DC.Decision.recorded_from_flambda;
+            DC.V0.inlining_decisions :=
+              create_v0_datum true :: !DC.V0.inlining_decisions;
+
             Original (D.Unchanged (spec_reason, inl_reason))
       end
     in

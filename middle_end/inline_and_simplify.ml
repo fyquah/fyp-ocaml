@@ -598,7 +598,10 @@ and simplify_set_of_closures original_env r
       Inline_and_simplify_aux.count_bound_vars function_decl.body
     in
     let body, r =
-      E.enter_closure closure_env ~closure_id:(Closure_id.wrap fun_var)
+      E.enter_closure closure_env
+        ~closure_id:(Closure_id.wrap fun_var)
+        ~set_of_closures_id:(function_decls.set_of_closures_id)
+        ~closure_origin:function_decl.closure_origin
         ~inline_inside:
           (Inlining_decision.should_inline_inside_declaration function_decl)
         ~dbg:function_decl.dbg
@@ -1455,6 +1458,8 @@ and duplicate_function ~env ~(set_of_closures : Flambda.set_of_closures)
     in
     E.enter_closure closure_env
       ~closure_id:(Closure_id.wrap fun_var)
+      ~set_of_closures_id:(function_decls.set_of_closures_id)
+      ~closure_origin:function_decl.closure_origin
       ~inline_inside:false
       ~dbg:function_decl.dbg
       ~f:(fun body_env ->
@@ -1692,13 +1697,14 @@ let add_predef_exns_to_environment ~env ~backend =
     env
     Predef.all_predef_exns
 
-let run ~never_inline ~backend ~prefixname ~round program =
+let run ~never_inline ~backend ~prefixname ~round ~inlining_overrides program =
   let r = R.create () in
   let report = !Clflags.inlining_report in
   if never_inline then Clflags.inlining_report := false;
   let initial_env =
     add_predef_exns_to_environment
-      ~env:(E.create ~never_inline ~backend ~round ~current_function:None)
+      ~env:(E.create ~never_inline ~backend ~round ~current_function:None
+        ~overrides:inlining_overrides)
       ~backend
   in
   let result, r = simplify_program initial_env r program in
@@ -1713,7 +1719,8 @@ let run ~never_inline ~backend ~prefixname ~round program =
   if !Clflags.inlining_report then begin
     let output_prefix = Printf.sprintf "%s.%d" prefixname round in
     Inlining_stats.save_then_forget_decisions ~output_prefix;
-    Data_collector.save ~output_prefix
+    Data_collector.V1.Decision.save ~output_prefix;
+    Data_collector.V0.save ~output_prefix
   end;
   Clflags.inlining_report := report;
   result

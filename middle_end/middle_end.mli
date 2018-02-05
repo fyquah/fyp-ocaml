@@ -26,4 +26,5 @@ val middle_end
   -> filename:string
   -> module_ident:Ident.t
   -> module_initializer:Lambda.lambda
+  -> inlining_overrides: Data_collector.Multiversion_overrides.t
   -> Flambda.program

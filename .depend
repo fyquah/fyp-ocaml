@@ -781,7 +781,7 @@ asmcomp/asmpackager.cmo : typing/typemod.cmi bytecomp/translmod.cmi \
     utils/profile.cmi utils/misc.cmi middle_end/middle_end.cmi \
     parsing/location.cmi bytecomp/lambda.cmi typing/ident.cmi \
     asmcomp/export_info_for_pack.cmi asmcomp/export_info.cmi typing/env.cmi \
-    utils/config.cmi asmcomp/compilenv.cmi \
+    middle_end/data_collector.cmi utils/config.cmi asmcomp/compilenv.cmi \
     middle_end/base_types/compilation_unit.cmi asmcomp/cmx_format.cmi \
     utils/clflags.cmi utils/ccomp.cmi asmcomp/asmlink.cmi asmcomp/asmgen.cmi \
     asmcomp/asmpackager.cmi
@@ -789,7 +789,7 @@ asmcomp/asmpackager.cmx : typing/typemod.cmx bytecomp/translmod.cmx \
     utils/profile.cmx utils/misc.cmx middle_end/middle_end.cmx \
     parsing/location.cmx bytecomp/lambda.cmx typing/ident.cmx \
     asmcomp/export_info_for_pack.cmx asmcomp/export_info.cmx typing/env.cmx \
-    utils/config.cmx asmcomp/compilenv.cmx \
+    middle_end/data_collector.cmx utils/config.cmx asmcomp/compilenv.cmx \
     middle_end/base_types/compilation_unit.cmx asmcomp/cmx_format.cmi \
     utils/clflags.cmx utils/ccomp.cmx asmcomp/asmlink.cmx asmcomp/asmgen.cmx \
     asmcomp/asmpackager.cmi
@@ -1303,20 +1303,28 @@ middle_end/closure_conversion_aux.cmi : middle_end/base_types/variable.cmi \
     middle_end/base_types/mutable_variable.cmi parsing/location.cmi \
     bytecomp/lambda.cmi typing/ident.cmi
 middle_end/data_collector.cmo : sexp/sexp_file.cmi sexp/sexp.cmi \
-    middle_end/base_types/set_of_closures_id.cmi utils/helper.cmi \
-    middle_end/base_types/closure_origin.cmi \
-    middle_end/base_types/closure_id.cmi middle_end/base_types/call_site.cmi \
-    middle_end/base_types/apply_id.cmi middle_end/data_collector.cmi
+    middle_end/base_types/set_of_closures_id.cmi utils/misc.cmi \
+    utils/helper.cmi middle_end/base_types/closure_origin.cmi \
+    middle_end/base_types/closure_id.cmi utils/clflags.cmi \
+    middle_end/base_types/call_site.cmi middle_end/base_types/apply_id.cmi \
+    middle_end/data_collector.cmi
 middle_end/data_collector.cmx : sexp/sexp_file.cmx sexp/sexp.cmx \
-    middle_end/base_types/set_of_closures_id.cmx utils/helper.cmx \
-    middle_end/base_types/closure_origin.cmx \
-    middle_end/base_types/closure_id.cmx middle_end/base_types/call_site.cmx \
-    middle_end/base_types/apply_id.cmx middle_end/data_collector.cmi
+    middle_end/base_types/set_of_closures_id.cmx utils/misc.cmx \
+    utils/helper.cmx middle_end/base_types/closure_origin.cmx \
+    middle_end/base_types/closure_id.cmx utils/clflags.cmx \
+    middle_end/base_types/call_site.cmx middle_end/base_types/apply_id.cmx \
+    middle_end/data_collector.cmi
 middle_end/data_collector.cmi : sexp/sexp.cmi \
+    middle_end/data_collector_intf.cmo middle_end/base_types/closure_id.cmi \
+    middle_end/base_types/call_site.cmi
+middle_end/data_collector_intf.cmo : sexp/sexp.cmi \
     middle_end/base_types/set_of_closures_id.cmi \
     middle_end/base_types/closure_origin.cmi \
-    middle_end/base_types/closure_id.cmi middle_end/base_types/call_site.cmi \
-    middle_end/base_types/apply_id.cmi
+    middle_end/base_types/closure_id.cmi middle_end/base_types/apply_id.cmi
+middle_end/data_collector_intf.cmx : sexp/sexp.cmx \
+    middle_end/base_types/set_of_closures_id.cmx \
+    middle_end/base_types/closure_origin.cmx \
+    middle_end/base_types/closure_id.cmx middle_end/base_types/apply_id.cmx
 middle_end/debuginfo.cmo : parsing/location.cmi middle_end/debuginfo.cmi
 middle_end/debuginfo.cmx : parsing/location.cmx middle_end/debuginfo.cmi
 middle_end/debuginfo.cmi : parsing/location.cmi
@@ -1548,7 +1556,7 @@ middle_end/inline_and_simplify.cmx : utils/warnings.cmx \
     middle_end/allocated_const.cmx middle_end/inline_and_simplify.cmi
 middle_end/inline_and_simplify.cmi : middle_end/base_types/variable.cmi \
     middle_end/inline_and_simplify_aux.cmi middle_end/flambda.cmi \
-    middle_end/backend_intf.cmi
+    middle_end/data_collector.cmi middle_end/backend_intf.cmi
 middle_end/inline_and_simplify_aux.cmo : middle_end/base_types/variable.cmi \
     middle_end/base_types/var_within_closure.cmi \
     middle_end/base_types/symbol.cmi \
@@ -1560,7 +1568,8 @@ middle_end/inline_and_simplify_aux.cmo : middle_end/base_types/variable.cmi \
     middle_end/inlining_stats.cmi middle_end/inlining_cost.cmi \
     middle_end/freshening.cmi middle_end/flambda_iterators.cmi \
     middle_end/flambda.cmi middle_end/feature_extractor.cmi \
-    middle_end/debuginfo.cmi middle_end/base_types/compilation_unit.cmi \
+    middle_end/debuginfo.cmi middle_end/data_collector.cmi \
+    middle_end/base_types/compilation_unit.cmi \
     middle_end/base_types/closure_origin.cmi \
     middle_end/base_types/closure_id.cmi utils/clflags.cmi \
     middle_end/base_types/call_site.cmi middle_end/backend_intf.cmi \
@@ -1576,7 +1585,8 @@ middle_end/inline_and_simplify_aux.cmx : middle_end/base_types/variable.cmx \
     middle_end/inlining_stats.cmx middle_end/inlining_cost.cmx \
     middle_end/freshening.cmx middle_end/flambda_iterators.cmx \
     middle_end/flambda.cmx middle_end/feature_extractor.cmx \
-    middle_end/debuginfo.cmx middle_end/base_types/compilation_unit.cmx \
+    middle_end/debuginfo.cmx middle_end/data_collector.cmx \
+    middle_end/base_types/compilation_unit.cmx \
     middle_end/base_types/closure_origin.cmx \
     middle_end/base_types/closure_id.cmx utils/clflags.cmx \
     middle_end/base_types/call_site.cmx middle_end/backend_intf.cmi \
@@ -1586,11 +1596,12 @@ middle_end/inline_and_simplify_aux.cmi : middle_end/base_types/variable.cmi \
     middle_end/base_types/static_exception.cmi \
     middle_end/simple_value_approx.cmi \
     middle_end/base_types/set_of_closures_origin.cmi \
-    middle_end/projection.cmi middle_end/base_types/mutable_variable.cmi \
+    middle_end/base_types/set_of_closures_id.cmi middle_end/projection.cmi \
+    middle_end/base_types/mutable_variable.cmi \
     middle_end/inlining_stats_types.cmi middle_end/inlining_cost.cmi \
     middle_end/freshening.cmi middle_end/flambda.cmi \
     middle_end/feature_extractor.cmi middle_end/debuginfo.cmi \
-    middle_end/base_types/closure_origin.cmi \
+    middle_end/data_collector.cmi middle_end/base_types/closure_origin.cmi \
     middle_end/base_types/closure_id.cmi middle_end/base_types/call_site.cmi \
     middle_end/backend_intf.cmi
 middle_end/inlining_cost.cmo : middle_end/base_types/variable.cmi \
@@ -1746,9 +1757,9 @@ middle_end/middle_end.cmo : utils/warnings.cmi \
     middle_end/initialize_symbol_to_let_symbol.cmi \
     middle_end/flambda_iterators.cmi middle_end/flambda_invariants.cmi \
     middle_end/flambda.cmi middle_end/feature_extractor.cmi \
-    middle_end/debuginfo.cmi middle_end/base_types/closure_id.cmi \
-    middle_end/closure_conversion.cmi utils/clflags.cmi \
-    middle_end/backend_intf.cmi middle_end/middle_end.cmi
+    middle_end/debuginfo.cmi middle_end/data_collector.cmi \
+    middle_end/base_types/closure_id.cmi middle_end/closure_conversion.cmi \
+    utils/clflags.cmi middle_end/backend_intf.cmi middle_end/middle_end.cmi
 middle_end/middle_end.cmx : utils/warnings.cmx \
     middle_end/base_types/variable.cmx middle_end/base_types/symbol.cmx \
     middle_end/share_constants.cmx \
@@ -1761,11 +1772,12 @@ middle_end/middle_end.cmx : utils/warnings.cmx \
     middle_end/initialize_symbol_to_let_symbol.cmx \
     middle_end/flambda_iterators.cmx middle_end/flambda_invariants.cmx \
     middle_end/flambda.cmx middle_end/feature_extractor.cmx \
-    middle_end/debuginfo.cmx middle_end/base_types/closure_id.cmx \
-    middle_end/closure_conversion.cmx utils/clflags.cmx \
-    middle_end/backend_intf.cmi middle_end/middle_end.cmi
+    middle_end/debuginfo.cmx middle_end/data_collector.cmx \
+    middle_end/base_types/closure_id.cmx middle_end/closure_conversion.cmx \
+    utils/clflags.cmx middle_end/backend_intf.cmi middle_end/middle_end.cmi
 middle_end/middle_end.cmi : bytecomp/lambda.cmi typing/ident.cmi \
-    middle_end/flambda.cmi middle_end/backend_intf.cmi
+    middle_end/flambda.cmi middle_end/data_collector.cmi \
+    middle_end/backend_intf.cmi
 middle_end/parameter.cmo : middle_end/base_types/variable.cmi \
     utils/identifiable.cmi middle_end/parameter.cmi
 middle_end/parameter.cmx : middle_end/base_types/variable.cmx \
@@ -1963,13 +1975,13 @@ middle_end/unbox_specialised_args.cmx : middle_end/base_types/variable.cmx \
 middle_end/unbox_specialised_args.cmi : middle_end/base_types/variable.cmi \
     middle_end/inlining_cost.cmi middle_end/inline_and_simplify_aux.cmi \
     middle_end/flambda.cmi
-middle_end/base_types/apply_id.cmo : utils/identifiable.cmi \
+middle_end/base_types/apply_id.cmo : sexp/sexp.cmi utils/identifiable.cmi \
     middle_end/base_types/compilation_unit.cmi \
     middle_end/base_types/apply_id.cmi
-middle_end/base_types/apply_id.cmx : utils/identifiable.cmx \
+middle_end/base_types/apply_id.cmx : sexp/sexp.cmx utils/identifiable.cmx \
     middle_end/base_types/compilation_unit.cmx \
     middle_end/base_types/apply_id.cmi
-middle_end/base_types/apply_id.cmi : utils/identifiable.cmi \
+middle_end/base_types/apply_id.cmi : sexp/sexp.cmi utils/identifiable.cmi \
     middle_end/base_types/compilation_unit.cmi
 middle_end/base_types/call_site.cmo : middle_end/base_types/variable.cmi \
     sexp/sexp.cmi utils/misc.cmi utils/helper.cmi \
