@@ -174,7 +174,7 @@ let afl_instrument = ref Config.afl_instrument (* -afl-instrument *)
 let afl_inst_ratio = ref 100           (* -afl-inst-ratio *)
 
 let simplify_rounds = ref None        (* -rounds *)
-let default_simplify_rounds = ref 3        (* -rounds *)
+let default_simplify_rounds = ref 1        (* -rounds *)
 let rounds () =
   match !simplify_rounds with
   | None -> !default_simplify_rounds
@@ -191,8 +191,8 @@ let default_inline_branch_cost = 5
 let default_inline_indirect_cost = 4
 let default_inline_branch_factor = 0.1
 let default_inline_lifting_benefit = 1300
-let default_inline_max_unroll = 5
-let default_inline_max_depth = 5
+let default_inline_max_unroll = 0
+let default_inline_max_depth = 1
 
 let inline_threshold = ref (Float_arg_helper.default default_inline_threshold)
 let inline_toplevel_threshold =
