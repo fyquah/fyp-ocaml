@@ -343,6 +343,12 @@ module Multiversion_overrides = struct
     | Some filename ->
       let ic = open_in filename in
       let sexp = Sexp_file.load_from_channel ic in
-      try V0 (Sexp.list_of_t V0.t_of_sexp sexp) with
-      | Sexp.Parse_error _  -> V1 (V1.Overrides.t_of_sexp sexp)
+      try
+        let chosen = V1.Overrides.t_of_sexp sexp in
+        Printf.printf "Loadded V1 overrides from %s\n" filename;
+        V1 chosen
+      with
+      | Sexp.Parse_error _  ->
+        Printf.printf "Loadded (DEPREACATED) V0 overrides from %s\n" filename;
+        V0 (Sexp.list_of_sexp V0.t_of_sexp sexp)
 end
