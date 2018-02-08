@@ -108,6 +108,8 @@ module V1 = struct
         closure_origin: Closure_origin.t;
       }
 
+    let compare a b = Closure_origin.compare a.closure_origin b.closure_origin
+
     let sexp_of_t t =
       Sexp.List [
         Option.sexp_of_t Closure_id.sexp_of_t t.closure_id;
@@ -115,6 +117,8 @@ module V1 = struct
         Closure_origin.sexp_of_t t.closure_origin;
       ]
     ;;
+
+    let print ppf t = Sexp.print_mach ppf (sexp_of_t t)
 
     let t_of_sexp sexp =
       let open Sexp in
@@ -303,7 +307,7 @@ module V1 = struct
       | _ -> raise (Sexp.Parse_error "oops")
     ;;
 
-    let load_from_channel ic = t_of_sexp (Sexp_file.load_from_channel ic)
+    let of_decisions t = t
   end
 end
 
@@ -336,17 +340,9 @@ module Multiversion_overrides = struct
   let load_from_clflags () =
     match !Clflags.inlining_overrides with
     | None -> Don't
-    | Some arg ->
-      match String.split_on_char ':' arg with
-      | [ "v0" ; filename ] ->
-        let ic = open_in filename in
-        let ts = V0.load_from_channel ic in
-        V0 ts
-      | [ "v1" ; filename ]
-      | [ filename ] -> 
-        let ic = open_in filename in
-        let ts = V1.Overrides.load_from_channel ic in
-        V1 ts
-      | _ ->
-        Misc.fatal_errorf "Failed to parse -inlining-overrides flag %s" arg
+    | Some filename ->
+      let ic = open_in filename in
+      let sexp = Sexp_file.load_from_channel ic in
+      try V0 (Sexp.list_of_t V0.t_of_sexp sexp) with
+      | Sexp.Parse_error _  -> V1 (V1.Overrides.t_of_sexp sexp)
 end
