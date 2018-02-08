@@ -400,7 +400,9 @@ let inline env r ~apply_id ~kind ~call_site ~lhs_of_application
       | Try_it -> true
     in
     if E.round env = 0 then
-      if (!Clflags.exhaustive_inlining && inlining_definitely_terminates ()) then
+      if (!Clflags.exhaustive_inlining
+            && inlining_definitely_terminates ()
+            && E.at_toplevel env) then
         Some Data_collector.Action.Inline
       else
         let v0_query =
