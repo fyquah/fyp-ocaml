@@ -782,11 +782,8 @@ let for_call_site
        DC.Trace_item.At_call_site { source = None; apply_id; applied; })
     | Some (source_closure : DC.Function_metadata.t) ->
       let source_closure_id = value_exn source_closure.closure_id in
-      (Call_site.create call_site_offset ~applied:closure_id_being_applied
-         ~source:source_closure_id,
-       DC.Trace_item.At_call_site {
-         source = Some source_closure; applied; apply_id;
-       })
+      (Call_site.create call_site_offset ~applied:closure_id_being_applied ~source:source_closure_id,
+       DC.Trace_item.At_call_site { source = Some source_closure; applied; apply_id; })
   in
   if List.length args <> List.length args_approxs then begin
     Misc.fatal_error "Inlining_decision.for_call_site: inconsistent lengths \
@@ -942,8 +939,8 @@ let for_call_site
               ~size_from_approximation ~dbg ~simplify ~fun_cost ~self_call
               ~inlining_threshold
           in
-          let trace = E.inlining_trace env in
-          let call_stack =  E.inlining_stack env in
+          let trace = snd call_site :: E.inlining_trace env in
+          let call_stack = fst call_site :: E.inlining_stack env in
           let metadata = applied_function_metadata in
           let applied = value_exn applied_function_metadata.closure_id in
           let round = E.round env in
