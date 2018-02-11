@@ -20,11 +20,11 @@
 
 val middle_end
    : Format.formatter
-  -> source_provenance:Timings.source_provenance
   -> prefixname:string
   -> backend:(module Backend_intf.S)
   -> size:int
   -> filename:string
   -> module_ident:Ident.t
   -> module_initializer:Lambda.lambda
+  -> inlining_overrides: Data_collector.Multiversion_overrides.t
   -> Flambda.program

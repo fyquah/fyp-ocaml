@@ -22,12 +22,13 @@
 (** Try to inline a full application of a known function, guided by various
     heuristics. *)
 val for_call_site
-   : kind:Flambda.call_kind
+   : call_kind:Flambda.call_kind
   -> env:Inline_and_simplify_aux.Env.t
   -> r:Inline_and_simplify_aux.Result.t
   -> function_decls:Flambda.function_declarations
   -> lhs_of_application:Variable.t
   -> closure_id_being_applied:Closure_id.t
+  -> apply_id: Apply_id.t
   -> function_decl:Flambda.function_declaration
   -> value_set_of_closures:Simple_value_approx.value_set_of_closures
   -> args:Variable.t list

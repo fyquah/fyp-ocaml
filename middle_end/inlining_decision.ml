@@ -118,7 +118,8 @@ let actually_extract_features
     let specialized_args =
       Variable.Map.fold
         (fun var _ acc ->
-          if List.exists (fun param -> Variable.equal param var) params
+          if List.exists (fun param ->
+            Variable.equal (Parameter.var param) var) params
           then acc else acc + 1)
         value_set_of_closures.specialised_args 0
     in
@@ -233,7 +234,7 @@ let extract_features ~kind ~closure_id ~env ~function_decl
   end
 ;;
 
-let inline env r ~kind ~call_site ~lhs_of_application
+let inline env r ~apply_id ~kind ~call_site ~lhs_of_application
     ~(function_decls : Flambda.function_declarations)
     ~closure_id_being_applied ~(function_decl : Flambda.function_declaration)
     ~value_set_of_closures ~only_use_of_function ~original ~recursive
@@ -287,7 +288,7 @@ let inline env r ~kind ~call_site ~lhs_of_application
       Try_it
     else if self_call then
       Don't_try_it S.Not_inlined.Self_call
-    else if not (E.inlining_allowed env closure_id_being_applied) then
+    else if not (E.inlining_allowed env function_decl.closure_origin) then
       Don't_try_it S.Not_inlined.Unrolling_depth_exceeded
     else if only_use_of_function || always_inline then
       Try_it
@@ -379,19 +380,64 @@ let inline env r ~kind ~call_site ~lhs_of_application
       Try_it
     end
   in
-  let call_stack = call_site :: E.inlining_stack env in
+
+  (* ===== This is to look for inlining overrides ===== *)
+  let call_stack = fst call_site :: E.inlining_stack env in
+  let trace = snd call_site :: E.inlining_trace env in
   let applied = closure_id_being_applied in
   let found =
+    let inlining_definitely_terminates () =
+      match try_inlining with
+      | Don't_try_it S.Not_inlined.Unrolling_depth_exceeded
+      | Don't_try_it Annotation
+      | Don't_try_it Self_call
+      | Don't_try_it Above_threshold _ -> false
+      | Don't_try_it Classic_mode
+      | Don't_try_it Override
+      | Don't_try_it Without_subfunctions _
+      | Don't_try_it With_subfunctions (_, _)
+      | Don't_try_it No_useful_approximations -> true
+      | Try_it -> true
+    in
     if E.round env = 0 then
-      if !Clflags.exhaustive_inlining then
-        Some true
+      if (!Clflags.exhaustive_inlining
+            && inlining_definitely_terminates ()
+            && E.at_toplevel env) then
+        Some Data_collector.Action.Inline
       else
-        Data_collector.find_decision ~call_stack ~applied
+        let v0_query =
+          { Data_collector.V0.Query. call_stack; applied;  }
+        in
+        let v1_query = { Data_collector.V1.Overrides. trace; apply_id; } in
+        let query = (v0_query, v1_query) in
+        Data_collector.Multiversion_overrides.find_decision (E.overrides env) query
     else
       None
   in
-  match found with
-  | Some true  ->
+  let always_inline = 
+    match found with
+    | Some Data_collector.Action.Inline -> true
+    | Some Apply
+    | None -> always_inline
+  in
+  let try_inlining =
+    match found with
+    | Some Apply -> Don't_try_it S.Not_inlined.Override
+    | Some Data_collector.Action.Inline
+    | _ -> try_inlining
+  in
+  match try_inlining with
+  | Don't_try_it decision ->
+    let closure_id = closure_id_being_applied in
+    let size = Inlining_cost.lambda_size function_decl.body in
+    extract_features ~kind ~closure_id ~env ~function_decl
+      ~size_before_simplify:size ~size_after_simplify:size
+      ~value_set_of_closures ~flambda_tries:false;
+    Original decision
+  | Try_it ->
+    let r =
+      R.set_inlining_threshold r (Some remaining_inlining_threshold)
+    in
     let body, r_inlined =
       (* First we construct the code that would result from copying the body of
          the function, without doing any further inlining upon it, to the call
@@ -401,120 +447,85 @@ let inline env r ~kind ~call_site ~lhs_of_application
         ~closure_id_being_applied ~specialise_requested ~inline_requested
         ~function_decl ~args ~dbg ~simplify
     in
-    (* Inlining the body of the function was sufficiently beneficial that we
-       will keep it, replacing the call site.  We continue by allowing
-       further inlining within the inlined copy of the body. *)
-    let r_inlined =
-      (* The meaning of requesting inlining is that the user ensure
-         that the function has a benefit of at least its size. It is not
-         added to the benefit exposed by the inlining because the user should
-         have taken that into account before annotating the function. *)
-      if always_inline then
-        R.map_benefit r_inlined
-          (Inlining_cost.Benefit.max ~round:(E.round env)
-             Inlining_cost.Benefit.(requested_inline ~size_of:body zero))
-      else r_inlined
+    let size_before_simplify =
+      Inlining_cost.lambda_size function_decl.body
     in
-    let r =
-      R.map_benefit r_inlined (Inlining_cost.Benefit.(+) (R.benefit r))
+    let size_after_simplify = Inlining_cost.lambda_size body in
+    extract_features ~kind ~closure_id:closure_id_being_applied
+      ~env ~size_before_simplify
+      ~size_after_simplify ~function_decl
+      ~value_set_of_closures ~flambda_tries:true;
+    let num_direct_applications_seen =
+      (R.num_direct_applications r_inlined) - (R.num_direct_applications r)
     in
-    let env =
-      E.note_entering_inlined env closure_id_being_applied call_site
-    in
-    let env =
-      (* We decrement the unrolling count even if the function is not
-         recursive to avoid having to check whether or not it is recursive *)
-      E.inside_unrolled_function env function_decls.set_of_closures_origin
-    in
-    let env = E.inside_inlined_function env closure_id_being_applied in
-    let env =
-      if E.inlining_level env = 0
-         (* If the function was considered for inlining without considering
-            its sub-functions, and it is not below another inlining choice,
-            then we are certain that this code will be kept. *)
-      then env
-      else E.inlining_level_up env
-    in
-    Changed ((simplify env r body), S.Inlined.Override)
-  | Some false ->
-    Original S.Not_inlined.Override
-  | None ->
-    begin match try_inlining with
-    | Don't_try_it decision ->
-      let closure_id = closure_id_being_applied in
-      let size = Inlining_cost.lambda_size function_decl.body in
-      extract_features ~kind ~closure_id ~env ~function_decl
-        ~size_before_simplify:size ~size_after_simplify:size
-        ~value_set_of_closures ~flambda_tries:false;
-      Original decision
-    | Try_it ->
+    assert (num_direct_applications_seen >= 0);
+    let keep_inlined_version decision =
+      (* Inlining the body of the function was sufficiently beneficial that we
+         will keep it, replacing the call site.  We continue by allowing
+         further inlining within the inlined copy of the body. *)
+      let r_inlined =
+        (* The meaning of requesting inlining is that the user ensure
+           that the function has a benefit of at least its size. It is not
+           added to the benefit exposed by the inlining because the user should
+           have taken that into account before annotating the function. *)
+        if always_inline then
+          R.map_benefit r_inlined
+            (Inlining_cost.Benefit.max ~round:(E.round env)
+               Inlining_cost.Benefit.(requested_inline ~size_of:body zero))
+        else r_inlined
+      in
       let r =
-        R.set_inlining_threshold r (Some remaining_inlining_threshold)
+        R.map_benefit r_inlined (Inlining_cost.Benefit.(+) (R.benefit r))
       in
-      let body, r_inlined =
-        (* First we construct the code that would result from copying the body of
-           the function, without doing any further inlining upon it, to the call
-           site. *)
-        Inlining_transforms.inline_by_copying_function_body ~env
-          ~r:(R.reset_benefit r) ~function_decls ~lhs_of_application
-          ~closure_id_being_applied ~specialise_requested ~inline_requested
-          ~function_decl ~args ~dbg ~simplify
+      let env = E.note_entering_inlined env call_site in
+      let env =
+        (* We decrement the unrolling count even if the function is not
+           recursive to avoid having to check whether or not it is recursive *)
+        E.inside_unrolled_function env function_decls.set_of_closures_origin
       in
-      let size_before_simplify =
-        Inlining_cost.lambda_size function_decl.body
+      let env = E.inside_inlined_function env function_decl.closure_origin in
+      let env =
+        if E.inlining_level env = 0
+           (* If the function was considered for inlining without considering
+              its sub-functions, and it is not below another inlining choice,
+              then we are certain that this code will be kept. *)
+        then env
+        else E.inlining_level_up env
       in
-      let size_after_simplify = Inlining_cost.lambda_size body in
-      extract_features ~kind ~closure_id:closure_id_being_applied
-        ~env ~size_before_simplify
-        ~size_after_simplify ~function_decl
-        ~value_set_of_closures ~flambda_tries:true;
-      let num_direct_applications_seen =
-        (R.num_direct_applications r_inlined) - (R.num_direct_applications r)
+      Changed ((simplify env r body), decision)
+    in
+    if always_inline then
+      keep_inlined_version S.Inlined.Annotation
+    else if only_use_of_function then
+      keep_inlined_version S.Inlined.Decl_local_to_application
+    else begin
+      let wsb =
+        W.create ~original body
+          ~toplevel:(E.at_toplevel env)
+          ~branch_depth:(E.branch_depth env)
+          ~lifting:function_decl.Flambda.is_a_functor
+          ~round:(E.round env)
+          ~benefit:(R.benefit r_inlined)
       in
-      assert (num_direct_applications_seen >= 0);
-      let keep_inlined_version decision =
-        (* Inlining the body of the function was sufficiently beneficial that we
-           will keep it, replacing the call site.  We continue by allowing
-           further inlining within the inlined copy of the body. *)
-        let r_inlined =
-          (* The meaning of requesting inlining is that the user ensure
-             that the function has a benefit of at least its size. It is not
-             added to the benefit exposed by the inlining because the user should
-             have taken that into account before annotating the function. *)
-          if always_inline then
-            R.map_benefit r_inlined
-              (Inlining_cost.Benefit.max ~round:(E.round env)
-                 Inlining_cost.Benefit.(requested_inline ~size_of:body zero))
-          else r_inlined
-        in
-        let r =
-          R.map_benefit r_inlined (Inlining_cost.Benefit.(+) (R.benefit r))
-        in
+      if W.evaluate wsb then
+        keep_inlined_version (S.Inlined.Without_subfunctions wsb)
+      else if num_direct_applications_seen < 1 then begin
+      (* Inlining the body of the function did not appear sufficiently
+         beneficial; however, it may become so if we inline within the body
+         first.  We try that next, unless it is known that there were
+         no direct applications in the simplified body computed above, meaning
+         no opportunities for inlining. *)
+        Original (S.Not_inlined.Without_subfunctions wsb)
+      end else begin
+        let env = E.inlining_level_up env in
+        let env = E.note_entering_inlined env call_site in
         let env =
-          E.note_entering_inlined env closure_id_being_applied call_site
-        in
-        let env =
-          (* We decrement the unrolling count even if the function is not
-             recursive to avoid having to check whether or not it is recursive *)
+          (* We decrement the unrolling count even if the function is recursive
+             to avoid having to check whether or not it is recursive *)
           E.inside_unrolled_function env function_decls.set_of_closures_origin
         in
-        let env = E.inside_inlined_function env closure_id_being_applied in
-        let env =
-          if E.inlining_level env = 0
-             (* If the function was considered for inlining without considering
-                its sub-functions, and it is not below another inlining choice,
-                then we are certain that this code will be kept. *)
-          then env
-          else E.inlining_level_up env
-        in
-        Changed ((simplify env r body), decision)
-      in
-      if always_inline then
-        keep_inlined_version S.Inlined.Annotation
-      else if only_use_of_function then
-        keep_inlined_version S.Inlined.Decl_local_to_application
-      else begin
-        let wsb =
+        let body, r_inlined = simplify env r_inlined body in
+        let wsb_with_subfunctions =
           W.create ~original body
             ~toplevel:(E.at_toplevel env)
             ~branch_depth:(E.branch_depth env)
@@ -522,61 +533,32 @@ let inline env r ~kind ~call_site ~lhs_of_application
             ~round:(E.round env)
             ~benefit:(R.benefit r_inlined)
         in
-        if W.evaluate wsb then
-          keep_inlined_version (S.Inlined.Without_subfunctions wsb)
-        else if num_direct_applications_seen < 1 then begin
-        (* Inlining the body of the function did not appear sufficiently
-           beneficial; however, it may become so if we inline within the body
-           first.  We try that next, unless it is known that there were
-           no direct applications in the simplified body computed above, meaning
-           no opportunities for inlining. *)
-          Original (S.Not_inlined.Without_subfunctions wsb)
-        end else begin
-          let env = E.inlining_level_up env in
-          let env =
-            E.note_entering_inlined env closure_id_being_applied call_site
+        if W.evaluate wsb_with_subfunctions then begin
+          let res =
+            (body, R.map_benefit r_inlined
+                     (Inlining_cost.Benefit.(+) (R.benefit r)))
           in
-          let env =
-            (* We decrement the unrolling count even if the function is recursive
-               to avoid having to check whether or not it is recursive *)
-            E.inside_unrolled_function env function_decls.set_of_closures_origin
+          let decision =
+            S.Inlined.With_subfunctions (wsb, wsb_with_subfunctions)
           in
-          let body, r_inlined = simplify env r_inlined body in
-          let wsb_with_subfunctions =
-            W.create ~original body
-              ~toplevel:(E.at_toplevel env)
-              ~branch_depth:(E.branch_depth env)
-              ~lifting:function_decl.Flambda.is_a_functor
-              ~round:(E.round env)
-              ~benefit:(R.benefit r_inlined)
+          Changed (res, decision)
+        end
+        else begin
+          (* r_inlined contains an approximation that may be invalid for the
+             untransformed expression: it may reference functions that only
+             exists if the body of the function is in fact inlined.
+             If the function approximation contained an approximation that
+             does not depend on the actual values of its arguments, it
+             could be returned instead of [A.value_unknown]. *)
+          let decision =
+            S.Not_inlined.With_subfunctions (wsb, wsb_with_subfunctions)
           in
-          if W.evaluate wsb_with_subfunctions then begin
-            let res =
-              (body, R.map_benefit r_inlined
-                       (Inlining_cost.Benefit.(+) (R.benefit r)))
-            in
-            let decision =
-              S.Inlined.With_subfunctions (wsb, wsb_with_subfunctions)
-            in
-            Changed (res, decision)
-          end
-          else begin
-            (* r_inlined contains an approximation that may be invalid for the
-               untransformed expression: it may reference functions that only
-               exists if the body of the function is in fact inlined.
-               If the function approximation contained an approximation that
-               does not depend on the actual values of its arguments, it
-               could be returned instead of [A.value_unknown]. *)
-            let decision =
-              S.Not_inlined.With_subfunctions (wsb, wsb_with_subfunctions)
-            in
-            Original decision
-          end
+          Original decision
         end
       end
     end
 
-let specialise env r ~lhs_of_application
+let specialise env r ~lhs_of_application ~apply_id
       ~(function_decls : Flambda.function_declarations)
       ~(function_decl : Flambda.function_declaration)
       ~closure_id_being_applied
@@ -614,7 +596,7 @@ let specialise env r ~lhs_of_application
          (fun id approx ->
             not ((A.useful approx)
                  && Variable.Map.mem id (Lazy.force invariant_params)))
-         function_decl.params args_approxs)
+         (Parameter.List.vars function_decl.params) args_approxs)
   in
   let always_specialise, never_specialise =
     (* Merge call site annotation and function annotation.
@@ -673,8 +655,8 @@ let specialise env r ~lhs_of_application
       let copied_function_declaration =
         Inlining_transforms.inline_by_copying_function_declaration ~env
           ~r:(R.reset_benefit r) ~lhs_of_application
-          ~function_decls ~closure_id_being_applied ~function_decl
-          ~args ~args_approxs
+          ~function_decls ~closure_id_being_applied ~apply_id
+          ~function_decl ~args ~args_approxs
           ~invariant_params:value_set_of_closures.invariant_params
           ~specialised_args:value_set_of_closures.specialised_args
           ~direct_call_surrogates:value_set_of_closures.direct_call_surrogates
@@ -768,30 +750,40 @@ let specialise env r ~lhs_of_application
         Original decision
     end
 
-let blabla = ref false
+module DC = Data_collector
 
-let for_call_site ~kind ~env ~r ~(function_decls : Flambda.function_declarations)
-      ~lhs_of_application ~closure_id_being_applied
+let value_exn = function
+  | None -> assert false
+  | Some x -> x
+
+let for_call_site
+      ~call_kind:kind ~env ~r ~(function_decls : Flambda.function_declarations)
+      ~lhs_of_application ~closure_id_being_applied ~apply_id
       ~(function_decl : Flambda.function_declaration)
       ~(value_set_of_closures : Simple_value_approx.value_set_of_closures)
       ~args ~args_approxs ~dbg ~simplify ~inline_requested
       ~specialise_requested =
-  blabla := (
-    match !Clflags.inlining_overrides with
-    | None -> not !Clflags.exhaustive_inlining
-    | Some _ -> false
-  );
   let (_  : Flambda.call_kind) = kind in
   let (call_site_offset, env) =
     E.next_call_site_offset env
   in
+  let applied_function_metadata =
+    { DC.Function_metadata.
+      closure_id = Some closure_id_being_applied;
+      set_of_closures_id = Some function_decls.set_of_closures_id;
+      closure_origin = function_decl.closure_origin;
+    }
+  in
   let call_site =
-    match E.current_function env with
+    let applied = applied_function_metadata in
+    match E.current_closure env with
     | None ->
-      Call_site.create_top_level closure_id_being_applied call_site_offset
-    | Some closure_id ->
-      Call_site.create call_site_offset
-        ~applied:closure_id_being_applied ~source:closure_id
+      (Call_site.create_top_level closure_id_being_applied call_site_offset,
+       DC.Trace_item.At_call_site { source = None; apply_id; applied; })
+    | Some (source_closure : DC.Function_metadata.t) ->
+      let source_closure_id = value_exn source_closure.closure_id in
+      (Call_site.create call_site_offset ~applied:closure_id_being_applied ~source:source_closure_id,
+       DC.Trace_item.At_call_site { source = Some source_closure; applied; apply_id; })
   in
   if List.length args <> List.length args_approxs then begin
     Misc.fatal_error "Inlining_decision.for_call_site: inconsistent lengths \
@@ -799,16 +791,15 @@ let for_call_site ~kind ~env ~r ~(function_decls : Flambda.function_declarations
   end;
   if E.round env = 0 then begin
     let address = 2 * (Obj.magic (Obj.field (Obj.repr env) 1)) in
-    if not !blabla then begin
+    if false then begin
       Format.printf "[%d] %a -> Call site offset = %d\n"
         address
         Closure_id.print closure_id_being_applied
         (Call_site.Offset.to_int call_site_offset)
     end
   end else begin
-    if not !blabla then begin
+    if false then begin
       Format.printf "============================\n";
-      blabla := true
     end
   end;
   (* Remove unroll attributes from functions we are already actively
@@ -827,6 +818,7 @@ let for_call_site ~kind ~env ~r ~(function_decls : Flambda.function_declarations
   in
   let original =
     Flambda.Apply {
+      apply_id;
       func = lhs_of_application;
       args;
       kind = Direct closure_id_being_applied;
@@ -839,26 +831,20 @@ let for_call_site ~kind ~env ~r ~(function_decls : Flambda.function_declarations
     R.set_approx (R.seen_direct_application r) (A.value_unknown Other)
   in
   if function_decl.stub then begin
-    if not !blabla then
-      Format.printf "-> Stub\n";
     let body, r =
       Inlining_transforms.inline_by_copying_function_body ~env
         ~r ~function_decls ~lhs_of_application
         ~closure_id_being_applied ~specialise_requested ~inline_requested
         ~function_decl ~args ~dbg ~simplify
     in
-    let applied = closure_id_being_applied in
-    let env = E.inside_inlined_stub env applied call_site in
+    let env = E.inside_inlined_stub env applied_function_metadata call_site in
     simplify env r body
   end else if E.never_inline env then begin
-    if not !blabla then
-      Format.printf "-> Never inline %a\n" Call_site.pprint call_site;
     (* This case only occurs when examining the body of a stub function
        but not in the context of inlining said function.  As such, there
        is nothing to do here (and no decision to report). *)
     original, original_r
   end else begin
-    if not !blabla then Format.printf "-> Regular\n";
     let env = E.unset_never_inline_inside_closures env in
     let env =
       E.note_entering_call env
@@ -892,11 +878,12 @@ let for_call_site ~kind ~env ~r ~(function_decls : Flambda.function_declarations
       | Can_inline_if_no_larger_than _ -> false
     in
     let simpl =
+      (* Printf.printf "Here := %d\n" (E.inlining_level env); *)
       if inlining_prevented then
         Original (D.Prevented Function_prevented_from_inlining)
-      else if E.inlining_level env >= max_level then
+      else if E.inlining_level env >= max_level then begin
         Original (D.Prevented Level_exceeded)
-      else begin
+      end else begin
         let self_call =
           E.inside_set_of_closures_declaration
             function_decls.set_of_closures_origin env
@@ -922,7 +909,7 @@ let for_call_site ~kind ~env ~r ~(function_decls : Flambda.function_declarations
                   ~backend:(E.backend env))))
         in
         let specialise_result =
-          specialise env r ~lhs_of_application ~function_decls ~recursive
+          specialise env r ~apply_id ~lhs_of_application ~function_decls ~recursive
             ~closure_id_being_applied ~function_decl ~value_set_of_closures
             ~args ~args_approxs ~dbg ~simplify ~original ~inline_requested
             ~specialise_requested ~fun_cost ~self_call ~inlining_threshold
@@ -945,26 +932,38 @@ let for_call_site ~kind ~env ~r ~(function_decls : Flambda.function_declarations
                   A.print_value_set_of_closures value_set_of_closures
           in
           let inline_result =
-            inline env r ~kind ~call_site ~function_decls ~lhs_of_application
+            inline env r ~apply_id ~kind ~call_site ~function_decls ~lhs_of_application
               ~closure_id_being_applied ~function_decl ~value_set_of_closures
               ~only_use_of_function ~original ~recursive
               ~inline_requested ~specialise_requested ~args
               ~size_from_approximation ~dbg ~simplify ~fun_cost ~self_call
               ~inlining_threshold
           in
-          let call_stack = call_site :: E.inlining_stack env in
-          let applied = closure_id_being_applied in
-          let create_datum decision =
-            { Data_collector. applied; call_stack; decision }
+          let trace = snd call_site :: E.inlining_trace env in
+          let call_stack = fst call_site :: E.inlining_stack env in
+          let metadata = applied_function_metadata in
+          let applied = value_exn applied_function_metadata.closure_id in
+          let round = E.round env in
+          let create_v0_datum decision =
+            { DC.V0. call_stack; applied; decision }
+          in
+          let create_datum action =
+            { DC.Decision. round; trace; apply_id; action; metadata; }
           in
           match inline_result with
           | Changed (res, inl_reason) ->
-            Data_collector.inlining_decisions :=
-              create_datum true :: !Data_collector.inlining_decisions;
+            DC.Decision.recorded_from_flambda :=
+              create_datum DC.Action.Inline :: !DC.Decision.recorded_from_flambda;
+            DC.V0.inlining_decisions :=
+              create_v0_datum false :: !DC.V0.inlining_decisions;
+
             Changed (res, D.Inlined (spec_reason, inl_reason))
           | Original inl_reason ->
-            Data_collector.inlining_decisions :=
-              create_datum false :: !Data_collector.inlining_decisions;
+            DC.Decision.recorded_from_flambda :=
+              create_datum DC.Action.Apply :: !DC.Decision.recorded_from_flambda;
+            DC.V0.inlining_decisions :=
+              create_v0_datum true :: !DC.V0.inlining_decisions;
+
             Original (D.Unchanged (spec_reason, inl_reason))
       end
     in

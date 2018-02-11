@@ -33,7 +33,8 @@ module Env : sig
      : never_inline:bool
     -> backend:(module Backend_intf.S)
     -> round:int
-    -> current_function: Closure_id.t option
+    -> current_function: Data_collector.Function_metadata.t option
+    -> overrides: Data_collector.Multiversion_overrides.t
     -> t
 
   val bump_offset : t -> t
@@ -41,6 +42,10 @@ module Env : sig
   val next_call_site_offset : t -> (Call_site.Offset.t * t)
 
   val inlining_stack : t -> Call_site.t list
+
+  val inlining_trace : t -> Data_collector.Trace_item.t list
+
+  val overrides : t -> Data_collector.Multiversion_overrides.t
 
   (** Obtain the first-class module that gives information about the
       compiler backend being used for compilation. *)
@@ -79,6 +84,14 @@ module Env : sig
   (** Like [find_exn], but intended for use where the "not present in
       environment" case is to be handled by the caller. *)
   val find_opt : t -> Variable.t -> Simple_value_approx.t option
+
+  (** FYP STUFF: Returns which closure origin we are currently in. If
+                 we are simplifying things in a function declaration, then
+                 this is the declaration's Closure Origin. If we are
+                 inlining a function call, this is going to be the inlined
+                 function.
+   **)
+  val current_closure : t -> Data_collector.Function_metadata.t option
 
   (** Like [find_exn], but for a list of variables. *)
   val find_list_exn : t -> Variable.t list -> Simple_value_approx.t list
@@ -134,14 +147,6 @@ module Env : sig
       declaration, to avoid (due to a compiler bug) accidental use of
       variables from outer scopes that are not accessible. *)
   val local : t -> t
-
-  val current_function : t -> Closure_id.t option
-
-  (** Note that the inliner is descending into a function body from the given
-      set of closures.  A set of such descents is maintained. *)
-  (* CR-someday mshinwell: consider changing name to remove "declaration".
-     Also, isn't this the inlining stack?  Maybe we can use that instead. *)
-  val enter_set_of_closures_declaration : Set_of_closures_origin.t -> t -> t
 
   (** Determine whether the inliner is currently inside a function body from
       the given set of closures.  This is used to detect whether a given
@@ -211,13 +216,17 @@ module Env : sig
 
   (** Whether it is permissible to inline a call to a function in the given
       environment. *)
-  val inlining_allowed : t -> Closure_id.t -> bool
+  val inlining_allowed : t -> Closure_origin.t -> bool
 
   (** Whether the given environment is currently being used to rewrite the
       body of an inlined function. *)
-  val inside_inlined_function : t -> Closure_id.t -> t
+  val inside_inlined_function : t -> Closure_origin.t -> t
 
-  val inside_inlined_stub : t -> Closure_id.t -> Call_site.t -> t
+  val inside_inlined_stub
+     : t
+    -> Data_collector.Function_metadata.t
+    -> (Call_site.t * Data_collector.Trace_item.t)
+    -> t
 
   (** If collecting inlining statistics, record that the inliner is about to
       descend into [closure_id].  This information enables us to produce a
@@ -242,7 +251,11 @@ module Env : sig
    (** If collecting inlining statistics, record that the inliner is about to
        descend into an inlined function call.  This requires that the inliner
        has already entered the call with [note_entering_call]. *)
-  val note_entering_inlined : t -> Closure_id.t -> Call_site.t -> t
+    
+  val note_entering_inlined
+     : t
+    -> (Call_site.t * Data_collector.Trace_item.t)
+    -> t
 
    (** If collecting inlining statistics, record that the inliner is about to
        descend into a specialised function definition.  This requires that the
@@ -256,6 +269,8 @@ module Env : sig
   val enter_closure
      : t
     -> closure_id:Closure_id.t
+    -> closure_origin: Closure_origin.t
+    -> set_of_closures_id: Set_of_closures_id.t
     -> inline_inside:bool
     -> dbg:Debuginfo.t
     -> f:(t -> 'a)
@@ -309,7 +324,7 @@ module Result : sig
   val set_approx : t -> Simple_value_approx.t -> t
 
   (** Set the approximation of the subexpression to the meet of the
-      current return aprroximation and the provided one. Typically
+      current return approximation and the provided one. Typically
       used just before returning from a branch case of the
       simplification algorithm. *)
   val meet_approx : t -> Env.t -> Simple_value_approx.t -> t

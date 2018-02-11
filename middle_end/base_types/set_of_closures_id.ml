@@ -26,3 +26,5 @@ include Identifiable.Make (Unit_id)
 let create = Unit_id.create
 let get_compilation_unit = Unit_id.unit
 let name = Unit_id.name
+
+let sexp_of_t t = Sexp.Atom (Unit_id.to_string t) 

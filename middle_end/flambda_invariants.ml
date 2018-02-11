@@ -189,7 +189,7 @@ let variable_and_symbol_invariants (program : Flambda.program) =
       loop (add_binding_occurrence env var) handler
     (* Everything else: *)
     | Var var -> check_variable_is_bound env var
-    | Apply { func; args; kind; dbg; inline; specialise; } ->
+    | Apply { apply_id = _; func; args; kind; dbg; inline; specialise; } ->
       check_variable_is_bound env func;
       check_variables_are_bound env args;
       ignore_call_kind kind;
@@ -303,7 +303,7 @@ let variable_and_symbol_invariants (program : Flambda.program) =
             let acceptable_free_variables =
               Variable.Set.union
                 (Variable.Set.union variables_in_closure functions_in_closure)
-                (Variable.Set.of_list params)
+                (Parameter.Set.vars params)
             in
             let bad =
               Variable.Set.diff free_variables acceptable_free_variables
@@ -315,7 +315,7 @@ let variable_and_symbol_invariants (program : Flambda.program) =
             (* Check that parameters are unique across all functions in the
                declaration. *)
             let old_all_params_size = Variable.Set.cardinal all_params in
-            let params = Variable.Set.of_list params in
+            let params = Parameter.Set.vars params in
             let params_size = Variable.Set.cardinal params in
             let all_params = Variable.Set.union all_params params in
             let all_params_size = Variable.Set.cardinal all_params in

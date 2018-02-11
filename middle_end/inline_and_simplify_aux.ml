@@ -16,6 +16,8 @@
 
 [@@@ocaml.warning "+a-4-9-30-40-41-42"]
 
+module DC = Data_collector
+
 module Env = struct
   type scope = Current | Outer
 
@@ -27,11 +29,11 @@ module Env = struct
     approx_mutable : Simple_value_approx.t Mutable_variable.Map.t;
     approx_sym : Simple_value_approx.t Symbol.Map.t;
     projections : Variable.t Projection.Map.t;
-    current_function : Closure_id.t option;
+    current_closure : DC.Function_metadata.t option;
     current_functions : Set_of_closures_origin.Set.t;
     (* The functions currently being declared: used to avoid inlining
        recursively *)
-    inlining_stack: Call_site.t list;
+    inlining_stack: (Call_site.t * DC.Trace_item.t) list;
     inlining_level : int;
     (* Number of times "inline" has been called recursively *)
     inside_branch : int;
@@ -40,7 +42,7 @@ module Env = struct
     never_inline_inside_closures : bool;
     never_inline_outside_closures : bool;
     unroll_counts : int Set_of_closures_origin.Map.t;
-    inlining_counts : int Closure_id.Map.t;
+    inlining_counts : int Closure_origin.Map.t;
     actively_unrolling : int Set_of_closures_origin.Map.t;
     closure_depth : int;
     inlining_stats_closure_stack : Inlining_stats.Closure_stack.t;
@@ -50,6 +52,9 @@ module Env = struct
     call_context_stack: Feature_extractor.call_context list;
     original_function_size_stack : int list;  (* Note : doesn't include size of inlined stuff *)
     original_bound_vars_stack : int list;
+
+    (* for custom inlining decisions *)
+    overrides: Data_collector.Multiversion_overrides.t;
   }
 
   let bump_offset t = { t with call_site_offset = ref Call_site.Offset.base }
@@ -58,7 +63,7 @@ module Env = struct
 
   let call_context_stack t = t.call_context_stack
 
-  let create ~never_inline ~backend ~round ~current_function =
+  let create ~never_inline ~backend ~round ~current_function:current_closure ~overrides =
     { backend;
       call_site_offset = ref Call_site.Offset.base;
       round;
@@ -66,7 +71,7 @@ module Env = struct
       approx_mutable = Mutable_variable.Map.empty;
       approx_sym = Symbol.Map.empty;
       projections = Projection.Map.empty;
-      current_function;
+      current_closure;
       current_functions = Set_of_closures_origin.Set.empty;
       inlining_level = 0;
       inlining_stack = [];
@@ -76,7 +81,7 @@ module Env = struct
       never_inline_inside_closures = false;
       never_inline_outside_closures = false;
       unroll_counts = Set_of_closures_origin.Map.empty;
-      inlining_counts = Closure_id.Map.empty;
+      inlining_counts = Closure_origin.Map.empty;
       actively_unrolling = Set_of_closures_origin.Map.empty;
       closure_depth = 0;
       inlining_stats_closure_stack =
@@ -85,9 +90,12 @@ module Env = struct
       call_context_stack = [];
       original_function_size_stack = [];
       original_bound_vars_stack = [];
+      overrides;
     }
 
-  let inlining_stack t = t.inlining_stack
+  let inlining_stack t = List.map fst t.inlining_stack
+  let inlining_trace t = List.map snd t.inlining_stack
+  let overrides t = t.overrides
 
   let backend t = t.backend
   let round t = t.round
@@ -109,8 +117,9 @@ module Env = struct
     let max_level =
       Clflags.Int_arg_helper.get ~key:(env.round) !Clflags.inline_max_depth
     in
+    (* Printf.printf "[round: %d] %d; %d\n" env.round env.inlining_level max_level; *)
     if (env.inlining_level + 1) > max_level then
-      Misc.fatal_error "Inlining level increased above maximum";
+      Misc.fatal_errorf "Inlining level increased above maximum (current: %d; max: %d)" env.inlining_level max_level;
     { env with inlining_level = env.inlining_level + 1 }
 
   let print ppf t =
@@ -249,12 +258,12 @@ module Env = struct
                 (snd (Variable.Map.find id t.approx)))
     with Not_found -> None
 
-  let current_function t = t.current_function
+  let current_closure t = t.current_closure
 
   let activate_freshening t =
     { t with freshening = Freshening.activate t.freshening }
 
-  let enter_set_of_closures_declaration origin t =
+  let enter_set_of_closures_declaration t origin =
     { t with
       current_functions =
         Set_of_closures_origin.Set.add origin t.current_functions; }
@@ -322,7 +331,7 @@ module Env = struct
       try
         Set_of_closures_origin.Map.find origin t.actively_unrolling
       with Not_found ->
-        Misc.fatal_error "Unexpected actively unrolled function";
+        Misc.fatal_error "Unexpected actively unrolled function"
     in
     let actively_unrolling =
       Set_of_closures_origin.Map.add origin (unrolling - 1) t.actively_unrolling
@@ -356,7 +365,7 @@ module Env = struct
   let inlining_allowed t id =
     let inlining_count =
       try
-        Closure_id.Map.find id t.inlining_counts
+        Closure_origin.Map.find id t.inlining_counts
       with Not_found ->
         max 1 (Clflags.Int_arg_helper.get
                  ~key:t.round !Clflags.inline_max_unroll)
@@ -366,13 +375,13 @@ module Env = struct
   let inside_inlined_function t applied  =
     let inlining_count =
       try
-        Closure_id.Map.find applied t.inlining_counts
+        Closure_origin.Map.find applied t.inlining_counts
       with Not_found ->
         max 1 (Clflags.Int_arg_helper.get
                  ~key:t.round !Clflags.inline_max_unroll)
     in
     let inlining_counts =
-      Closure_id.Map.add applied (inlining_count - 1) t.inlining_counts
+      Closure_origin.Map.add applied (inlining_count - 1) t.inlining_counts
     in
     { t with inlining_counts }
 
@@ -399,7 +408,12 @@ module Env = struct
             t.inlining_stats_closure_stack ~closure_id ~dbg;
       }
 
-  let note_entering_inlined t closure_id call_site =
+  let unpack_closure = function
+    | DC.Trace_item.Enter_decl { declared; _ } -> declared
+    | DC.Trace_item.At_call_site { applied; _ } -> applied
+  ;;
+
+  let note_entering_inlined t call_site =
     let call_site_offset = ref Call_site.Offset.base in
     if t.never_inline then { t with call_site_offset }
     else
@@ -410,13 +424,13 @@ module Env = struct
             t.inlining_stats_closure_stack;
         inlining_stack;
         call_site_offset;
-        current_function = Some closure_id;
+        current_closure = Some (unpack_closure (snd call_site));
       }
 
   let inside_inlined_stub t applied call_site =
     let call_site_offset = ref Call_site.Offset.base in
     let inlining_stack = call_site :: t.inlining_stack in
-    { t with current_function = Some applied;
+    { t with current_closure = Some applied;
              inlining_stack;
              call_site_offset; }
 
@@ -429,24 +443,38 @@ module Env = struct
             t.inlining_stats_closure_stack ~closure_ids;
       }
 
-  let enter_closure t ~closure_id ~inline_inside ~dbg ~f ~lambda_size ~bound_vars =
+  let enter_closure t ~closure_id ~closure_origin ~set_of_closures_id
+        ~inline_inside ~dbg ~f ~lambda_size ~bound_vars =
     let t =
       if inline_inside && not t.never_inline_inside_closures then t
       else set_never_inline t
     in
     let t = unset_never_inline_outside_closures t in
+    let declared =
+      let closure_id = Some closure_id in
+      let set_of_closures_id = Some set_of_closures_id in
+      { DC.Function_metadata.
+        closure_id; set_of_closures_id; closure_origin;
+      }
+    in
     let t =
-      let source =
+      let (v0_source, v1_source) =
         match t.inlining_stack with
-        | [] -> None
+        | [] -> (None, None)
         | hd :: _ ->
-          match hd with
-          | Enter_decl enter_decl -> Some enter_decl.closure
-          | At_call_site at_call_site -> Some at_call_site.applied
+          match fst hd, snd hd with
+          | Call_site.Enter_decl v0, DC.Trace_item.Enter_decl v1 ->
+            (Some v0.closure, Some v1.declared)
+          | Call_site.At_call_site v0, DC.Trace_item.At_call_site v1 ->
+            (Some v0.applied, Some v1.applied)
+          | _, _ -> assert false
       in
-      let inlining_stack =
-        Call_site.enter_decl ~closure:closure_id ~source :: t.inlining_stack
+      let tos =
+        (Call_site.Enter_decl { closure = closure_id; source = v0_source; },
+         DC.Trace_item.Enter_decl { source = v1_source; declared; }
+        )
       in
+      let inlining_stack = tos :: t.inlining_stack in
       let call_context_stack =
         Feature_extractor.In_function_declaration :: t.call_context_stack
       in
@@ -460,7 +488,7 @@ module Env = struct
     in
     let t =
       { t with
-        current_function = Some closure_id;
+        current_closure = Some declared;
         original_function_size_stack; original_bound_vars_stack;
         call_site_offset = ref Call_site.Offset.base;
       }
@@ -618,7 +646,7 @@ let prepare_to_simplify_set_of_closures ~env
           match only_for_function_decl with
           | None -> true
           | Some function_decl ->
-            Variable.Set.mem param (Variable.Set.of_list function_decl.params)
+            Variable.Set.mem param (Parameter.Set.vars function_decl.params)
         in
         if not keep then None
         else
@@ -683,8 +711,8 @@ let prepare_to_simplify_set_of_closures ~env
       Closure_id.Map.empty
   in
   let env =
-    E.enter_set_of_closures_declaration
-      function_decls.set_of_closures_origin env
+    E.enter_set_of_closures_declaration env
+      function_decls.set_of_closures_origin
   in
   (* we use the previous closure for evaluating the functions *)
   let internal_value_set_of_closures =
@@ -735,7 +763,7 @@ let populate_closure_approximations
           with Not_found -> (A.value_unknown Other)
         in
         E.add env id approx)
-      env function_decl.params
+      env (Parameter.List.vars function_decl.params)
   in
   env
 

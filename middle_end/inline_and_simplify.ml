@@ -598,11 +598,17 @@ and simplify_set_of_closures original_env r
       Inline_and_simplify_aux.count_bound_vars function_decl.body
     in
     let body, r =
-      E.enter_closure closure_env ~closure_id:(Closure_id.wrap fun_var)
+      E.enter_closure closure_env
+        ~closure_id:(Closure_id.wrap fun_var)
+        ~set_of_closures_id:(function_decls.set_of_closures_id)
+        ~closure_origin:function_decl.closure_origin
         ~inline_inside:
           (Inlining_decision.should_inline_inside_declaration function_decl)
         ~dbg:function_decl.dbg
-        ~f:(fun body_env -> simplify body_env r function_decl.body)
+        ~f:(fun body_env ->
+          assert (E.inside_set_of_closures_declaration
+            function_decls.set_of_closures_origin body_env);
+          simplify body_env r function_decl.body)
         ~lambda_size
         ~bound_vars
     in
@@ -632,6 +638,7 @@ and simplify_set_of_closures original_env r
         ~body ~stub:function_decl.stub ~dbg:function_decl.dbg
         ~inline ~specialise:function_decl.specialise
         ~is_a_functor:function_decl.is_a_functor
+        ~closure_origin:function_decl.closure_origin
     in
     let used_params' = Flambda.used_params function_decl in
     Variable.Map.add fun_var function_decl funs,
@@ -749,21 +756,22 @@ and simplify_apply env r ~(apply : Flambda.apply) : Flambda.t * R.t =
           in
           let nargs = List.length args in
           let arity = Flambda_utils.function_arity function_decl in
+          let apply_id = apply.apply_id in
           let result, r =
             if nargs = arity then
-              simplify_full_application env r ~kind ~function_decls
+              simplify_full_application env r ~function_decls ~apply_id ~call_kind:kind
                 ~lhs_of_application ~closure_id_being_applied ~function_decl
                 ~value_set_of_closures ~args ~args_approxs ~dbg
                 ~inline_requested ~specialise_requested
             else if nargs > arity then
-              simplify_over_application env r ~kind ~args ~args_approxs
+              simplify_over_application env r ~args ~args_approxs ~apply_id ~kind
                 ~function_decls ~lhs_of_application ~closure_id_being_applied
                 ~function_decl ~value_set_of_closures ~dbg ~inline_requested
                 ~specialise_requested
             else if nargs > 0 && nargs < arity then
               simplify_partial_application env r ~lhs_of_application
                 ~closure_id_being_applied ~function_decl ~args ~dbg
-                ~inline_requested ~specialise_requested
+                ~apply_id ~inline_requested ~specialise_requested
             else
               Misc.fatal_errorf "Function with arity %d when simplifying \
                   application expression: %a"
@@ -771,19 +779,21 @@ and simplify_apply env r ~(apply : Flambda.apply) : Flambda.t * R.t =
           in
           wrap result, r
         | Wrong ->  (* Insufficient approximation information to simplify. *)
+          let apply_id = apply.apply_id in
           Apply ({ func = lhs_of_application; args; kind = Indirect; dbg;
+              apply_id;
               inline = inline_requested; specialise = specialise_requested; }),
             ret r (A.value_unknown Other)))
 
-and simplify_full_application env r ~kind ~function_decls ~lhs_of_application
+and simplify_full_application env r ~function_decls ~lhs_of_application ~apply_id ~call_kind
       ~closure_id_being_applied ~function_decl ~value_set_of_closures ~args
       ~args_approxs ~dbg ~inline_requested ~specialise_requested =
-  Inlining_decision.for_call_site ~kind ~env ~r ~function_decls
+  Inlining_decision.for_call_site ~env ~r ~function_decls ~apply_id
     ~lhs_of_application ~closure_id_being_applied ~function_decl
     ~value_set_of_closures ~args ~args_approxs ~dbg ~simplify
-    ~inline_requested ~specialise_requested
+    ~inline_requested ~specialise_requested ~call_kind
 
-and simplify_partial_application env r ~lhs_of_application
+and simplify_partial_application env r ~apply_id ~lhs_of_application
       ~closure_id_being_applied ~function_decl ~args ~dbg
       ~inline_requested ~specialise_requested =
   let arity = Flambda_utils.function_arity function_decl in
@@ -813,7 +823,7 @@ and simplify_partial_application env r ~lhs_of_application
   | Default_specialise -> ()
   end;
   let freshened_params =
-    List.map (fun id -> Variable.rename id) function_decl.Flambda.params
+    List.map (fun p -> Parameter.rename p) function_decl.Flambda.params
   in
   let applied_args, remaining_args =
     Misc.Stdlib.List.map2_prefix (fun arg id' -> id', arg)
@@ -822,8 +832,9 @@ and simplify_partial_application env r ~lhs_of_application
   let wrapper_accepting_remaining_args =
     let body : Flambda.t =
       Apply {
+        apply_id;
         func = lhs_of_application;
-        args = freshened_params;
+        args = Parameter.List.vars freshened_params;
         kind = Direct closure_id_being_applied;
         dbg;
         inline = Default_inline;
@@ -842,14 +853,14 @@ and simplify_partial_application env r ~lhs_of_application
   in
   let with_known_args =
     Flambda_utils.bind
-      ~bindings:(List.map (fun (var, arg) ->
-          var, Flambda.Expr (Var arg)) applied_args)
+      ~bindings:(List.map (fun (param, arg) ->
+          Parameter.var param, Flambda.Expr (Var arg)) applied_args)
       ~body:wrapper_accepting_remaining_args
   in
   simplify env r with_known_args
 
-and simplify_over_application env r ~kind ~args ~args_approxs ~function_decls
-      ~lhs_of_application ~closure_id_being_applied ~function_decl
+and simplify_over_application env r ~args ~args_approxs ~function_decls ~kind
+      ~lhs_of_application ~closure_id_being_applied ~apply_id ~function_decl
       ~value_set_of_closures ~dbg ~inline_requested ~specialise_requested =
   let arity = Flambda_utils.function_arity function_decl in
   assert (arity < List.length args);
@@ -861,8 +872,8 @@ and simplify_over_application env r ~kind ~args ~args_approxs ~function_decls
     Misc.Stdlib.List.split_at arity args_approxs
   in
   let expr, r =
-    simplify_full_application env r ~kind ~function_decls ~lhs_of_application
-      ~closure_id_being_applied ~function_decl ~value_set_of_closures
+    simplify_full_application env r ~function_decls ~lhs_of_application ~call_kind:kind
+      ~closure_id_being_applied ~apply_id ~function_decl ~value_set_of_closures
       ~args:full_app_args ~args_approxs:full_app_approxs ~dbg
       ~inline_requested ~specialise_requested
   in
@@ -870,7 +881,8 @@ and simplify_over_application env r ~kind ~args ~args_approxs ~function_decls
   let expr : Flambda.t =
     Flambda.create_let func_var (Expr expr)
       (Apply { func = func_var; args = remaining_args; kind = Indirect; dbg;
-        inline = inline_requested; specialise = specialise_requested; })
+        inline = inline_requested; specialise = specialise_requested;
+        apply_id = Apply_id.change_label apply_id `Over_application })
   in
   let expr = Lift_code.lift_lets_expr expr ~toplevel:true in
   let env = E.set_never_inline env in
@@ -1030,25 +1042,23 @@ and simplify_named env r (tree : Flambda.named) : Flambda.named * R.t =
       | (Parraysetu kind | Parraysets kind),
         [_block; _field; _value],
         [block_approx; _field_approx; value_approx] ->
-        if A.is_definitely_immutable block_approx then begin
+        if A.warn_on_mutation block_approx then begin
           Location.prerr_warning (Debuginfo.to_location dbg)
             Warnings.Assignment_to_non_mutable_value
         end;
-        let kind = match A.descr block_approx, A.descr value_approx with
-          | (Value_float_array _, _)
-          | (_, Value_float _) ->
-            begin match kind with
-            | Pfloatarray | Pgenarray
-            | Paddrarray | Pintarray -> ()
-(* For the purpose of data mining, should be able to pretend nothing happened. *)
-(*
+        let kind =
+          let check () =
+            match kind with
+            | Pfloatarray | Pgenarray -> ()
+            | Paddrarray | Pintarray ->
               Misc.fatal_errorf "Assignment of a float to a specialised \
                                  non-float array: %a"
                 Flambda.print_named tree
-*)
-            end;
-            Lambda.Pfloatarray
-            (* CR pchambart: This should be accounted by the benefit *)
+          in
+          match A.descr block_approx, A.descr value_approx with
+          | (Value_float_array _, _) -> check(); Lambda.Pfloatarray
+          | (_, Value_float _) when Config.flat_float_array ->
+            check (); Lambda.Pfloatarray
           | _ ->
             kind
         in
@@ -1059,7 +1069,7 @@ and simplify_named env r (tree : Flambda.named) : Flambda.named * R.t =
         in
         Prim (prim, args, dbg), ret r (A.value_unknown Other)
       | Psetfield _, _block::_, block_approx::_ ->
-        if A.is_definitely_immutable block_approx then begin
+        if A.warn_on_mutation block_approx then begin
           Location.prerr_warning (Debuginfo.to_location dbg)
             Warnings.Assignment_to_non_mutable_value
         end;
@@ -1412,7 +1422,7 @@ and simplify_list env r l =
     else h' :: t', approxs, r
 
 and duplicate_function ~env ~(set_of_closures : Flambda.set_of_closures)
-      ~fun_var =
+      ~fun_var ~new_fun_var =
   let function_decl =
     match Variable.Map.find fun_var set_of_closures.function_decls.funs with
     | exception Not_found ->
@@ -1446,9 +1456,13 @@ and duplicate_function ~env ~(set_of_closures : Flambda.set_of_closures)
     in
     E.enter_closure closure_env
       ~closure_id:(Closure_id.wrap fun_var)
+      ~set_of_closures_id:(function_decls.set_of_closures_id)
+      ~closure_origin:function_decl.closure_origin
       ~inline_inside:false
       ~dbg:function_decl.dbg
       ~f:(fun body_env ->
+        assert (E.inside_set_of_closures_declaration
+          function_decls.set_of_closures_origin body_env);
         simplify body_env (R.create ()) function_decl.body)
       ~lambda_size
       ~bound_vars
@@ -1458,6 +1472,7 @@ and duplicate_function ~env ~(set_of_closures : Flambda.set_of_closures)
       ~body ~stub:function_decl.stub ~dbg:function_decl.dbg
       ~inline:function_decl.inline ~specialise:function_decl.specialise
       ~is_a_functor:function_decl.is_a_functor
+      ~closure_origin:(Closure_origin.create (Closure_id.wrap new_fun_var))
   in
   function_decl, specialised_args
 
@@ -1537,11 +1552,12 @@ let define_let_rec_symbol_approx env defs =
       env
     else
       let env =
-        List.fold_left (fun env (symbol, constant_defining_value) ->
+        List.fold_left (fun newenv (symbol, constant_defining_value) ->
             let approx =
               constant_defining_value_approx env constant_defining_value
             in
-            E.redefine_symbol env symbol approx)
+            let approx = A.augment_with_symbol approx symbol in
+            E.redefine_symbol newenv symbol approx)
           env defs
       in
       loop (times-1) env
@@ -1608,13 +1624,13 @@ let rec simplify_program_body env r (program : Flambda.program_body)
   | Let_rec_symbol (defs, program) ->
     let env = define_let_rec_symbol_approx env defs in
     let env, r, defs =
-      List.fold_left (fun (env, r, defs) (symbol, def) ->
+      List.fold_left (fun (newenv, r, defs) (symbol, def) ->
           let r, def, approx =
             simplify_constant_defining_value env r symbol def
           in
           let approx = A.augment_with_symbol approx symbol in
-          let env = E.redefine_symbol env symbol approx in
-          (env, r, (symbol, def) :: defs))
+          let newenv = E.redefine_symbol newenv symbol approx in
+          (newenv, r, (symbol, def) :: defs))
         (env, r, []) defs
     in
     let program, r = simplify_program_body env r program in
@@ -1679,13 +1695,14 @@ let add_predef_exns_to_environment ~env ~backend =
     env
     Predef.all_predef_exns
 
-let run ~never_inline ~backend ~prefixname ~round program =
+let run ~never_inline ~backend ~prefixname ~round ~inlining_overrides program =
   let r = R.create () in
   let report = !Clflags.inlining_report in
   if never_inline then Clflags.inlining_report := false;
   let initial_env =
     add_predef_exns_to_environment
-      ~env:(E.create ~never_inline ~backend ~round ~current_function:None)
+      ~env:(E.create ~never_inline ~backend ~round ~current_function:None
+        ~overrides:inlining_overrides)
       ~backend
   in
   let result, r = simplify_program initial_env r program in
@@ -1700,7 +1717,8 @@ let run ~never_inline ~backend ~prefixname ~round program =
   if !Clflags.inlining_report then begin
     let output_prefix = Printf.sprintf "%s.%d" prefixname round in
     Inlining_stats.save_then_forget_decisions ~output_prefix;
-    Data_collector.save ~output_prefix
+    Data_collector.V1.Decision.save ~output_prefix;
+    Data_collector.V0.save ~output_prefix
   end;
   Clflags.inlining_report := report;
   result

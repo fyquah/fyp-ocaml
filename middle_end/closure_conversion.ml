@@ -70,9 +70,9 @@ let add_default_argument_wrappers lam =
 (** Generate a wrapper ("stub") function that accepts a tuple argument and
     calls another function with arguments extracted in the obvious
     manner from the tuple. *)
-let tupled_function_call_stub original_params unboxed_version
+let tupled_function_call_stub original_params unboxed_version ~closure_bound_var
       : Flambda.function_declaration =
-  let tuple_param =
+  let tuple_param_var =
     Variable.rename ~append:"tupled_stub_param" unboxed_version
   in
   let params = List.map (fun p -> Variable.rename p) original_params in
@@ -86,19 +86,22 @@ let tupled_function_call_stub original_params unboxed_version
         dbg = Debuginfo.none;
         inline = Default_inline;
         specialise = Default_specialise;
+        apply_id = Apply_id.create `Plain_apply;
       })
   in
   let _, body =
     List.fold_left (fun (pos, body) param ->
         let lam : Flambda.named =
-          Prim (Pfield pos, [tuple_param], Debuginfo.none)
+          Prim (Pfield pos, [tuple_param_var], Debuginfo.none)
         in
         pos + 1, Flambda.create_let param lam body)
       (0, call) params
   in
+  let tuple_param = Parameter.wrap tuple_param_var in
   Flambda.create_function_declaration ~params:[tuple_param]
     ~body ~stub:true ~dbg:Debuginfo.none ~inline:Default_inline
     ~specialise:Default_specialise ~is_a_functor:false
+    ~closure_origin:(Closure_origin.create (Closure_id.wrap closure_bound_var))
 
 let register_const t (constant:Flambda.constant_defining_value) name
       : Flambda.constant_defining_value_block_field * string =
@@ -233,6 +236,7 @@ let rec close t env (lam : Lambda.lambda) : Flambda.t =
               dbg = Debuginfo.from_location ap_loc;
               inline = ap_inlined;
               specialise = ap_specialised;
+              apply_id = Apply_id.create `Plain_apply;
             })))
   | Lletrec (defs, body) ->
     let env =
@@ -394,7 +398,7 @@ let rec close t env (lam : Lambda.lambda) : Flambda.t =
     let arg2 = close t env arg2 in
     let const_true = Variable.create "const_true" in
     let cond = Variable.create "cond_sequor" in
-    Flambda.create_let const_true (Const (Int 1))
+    Flambda.create_let const_true (Const (Const_pointer 1))
       (Flambda.create_let cond (Expr arg1)
         (If_then_else (cond, Var const_true, arg2)))
   | Lprim (Psequand, [arg1; arg2], _) ->
@@ -402,7 +406,7 @@ let rec close t env (lam : Lambda.lambda) : Flambda.t =
     let arg2 = close t env arg2 in
     let const_false = Variable.create "const_false" in
     let cond = Variable.create "cond_sequand" in
-    Flambda.create_let const_false (Const (Int 0))
+    Flambda.create_let const_false (Const (Const_pointer 0))
       (Flambda.create_let cond (Expr arg1)
         (If_then_else (cond, arg2, Var const_false)))
   | Lprim ((Psequand | Psequor), _, _) ->
@@ -461,7 +465,7 @@ let rec close t env (lam : Lambda.lambda) : Flambda.t =
       ~create_body:(fun args ->
         name_expr (Prim (p, args, dbg))
           ~name)
-  | Lswitch (arg, sw) ->
+  | Lswitch (arg, sw, _loc) ->
     let scrutinee = Variable.create "switch" in
     let aux (i, lam) = i, close t env lam in
     let zero_to_n = Numbers.Int.zero_to_n in
@@ -563,21 +567,27 @@ and close_functions t external_env function_declarations : Flambda.named =
        CR-someday pchambart: eta-expansion wrapper for a primitive are
        not marked as stub but certainly should *)
     let stub = Function_decl.stub decl in
-    let params = List.map (Env.find_var closure_env) params in
+    let param_vars = List.map (Env.find_var closure_env) params in
+    let params = List.map Parameter.wrap param_vars in
     let closure_bound_var = Function_decl.closure_bound_var decl in
+    let unboxed_version = Variable.rename closure_bound_var in
     let body = close t closure_env body in
+    let closure_origin =
+      Closure_origin.create (Closure_id.wrap unboxed_version)
+    in
     let fun_decl =
       Flambda.create_function_declaration ~params ~body ~stub ~dbg
         ~inline:(Function_decl.inline decl)
         ~specialise:(Function_decl.specialise decl)
         ~is_a_functor:(Function_decl.is_a_functor decl)
+        ~closure_origin
     in
     match Function_decl.kind decl with
     | Curried -> Variable.Map.add closure_bound_var fun_decl map
     | Tupled ->
       let unboxed_version = Variable.rename closure_bound_var in
       let generic_function_stub =
-        tupled_function_call_stub params unboxed_version
+        tupled_function_call_stub param_vars unboxed_version ~closure_bound_var
       in
       Variable.Map.add unboxed_version fun_decl
         (Variable.Map.add closure_bound_var generic_function_stub map)
