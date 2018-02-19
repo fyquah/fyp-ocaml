@@ -43,6 +43,8 @@ module type S = sig
 
     val sexp_of_t : t -> Sexp.t
     val t_of_sexp : Sexp.t -> t
+
+    val pprint : Format.formatter -> t -> unit
   end
 
   (* What we decided to do at the call site, using this rather than a

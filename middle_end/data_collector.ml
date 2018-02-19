@@ -206,13 +206,24 @@ module V1 = struct
         At_call_site (at_call_site_of_sexp x)
       | _ -> raise (Sexp.Parse_error "oops")
 
+    let pprint ppf t =
+      match t with
+      | Enter_decl enter_decl ->
+        Format.fprintf ppf "Enter_decl(%a)"
+          Closure_origin.print enter_decl.declared.closure_origin
+      | At_call_site at_call_site ->
+        Format.fprintf ppf "At_call_site[%a](%a)"
+          Apply_id.print at_call_site.apply_id
+          Closure_origin.print at_call_site.applied.closure_origin
+    ;;
+
     let semantically_equal a b =
       match a, b with
       | Enter_decl a, Enter_decl b ->
         Closure_origin.equal a.declared.closure_origin b.declared.closure_origin
 
       | At_call_site a, At_call_site b ->
-        Apply_id.equal a.apply_id a.apply_id &&
+        Apply_id.equal a.apply_id b.apply_id &&
           (Closure_origin.equal
             a.applied.closure_origin b.applied.closure_origin)
 
@@ -345,7 +356,9 @@ module Multiversion_overrides = struct
       let sexp = Sexp_file.load_from_channel ic in
       try
         let chosen = V1.Overrides.t_of_sexp sexp in
-        Printf.printf "Loadded V1 overrides from %s\n" filename;
+        let len = List.length chosen in
+        Printf.printf "Loadded V1 overrides (len = %d) from %s\n"
+          len filename;
         V1 chosen
       with
       | Sexp.Parse_error _  ->
