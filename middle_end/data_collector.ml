@@ -217,7 +217,7 @@ module V1 = struct
           Closure_origin.print at_call_site.applied.closure_origin
     ;;
 
-    let semantically_equal a b =
+    let equal_ignoring_source a b =
       match a, b with
       | Enter_decl a, Enter_decl b ->
         Closure_origin.equal a.declared.closure_origin b.declared.closure_origin
@@ -302,7 +302,7 @@ module V1 = struct
       match
         List.find_opt (fun (decision : Decision.t) ->
             Apply_id.equal decision.apply_id apply_id
-            && Helper.list_equal Trace_item.semantically_equal decision.trace trace)
+            && Helper.list_equal Trace_item.equal_ignoring_source decision.trace trace)
           overrides
       with
       | None -> None
