@@ -402,6 +402,29 @@ module Simple_overrides = struct
     | _ -> raise (Sexp.Parse_error "bla")
   ;;
 
+  let sexp_of_apply a =
+    let { linkage_name; stamp; } = a in
+    Sexp.List [
+      Linkage_name.sexp_of_t linkage_name;
+      Option.sexp_of_t Sexp.t_of_int stamp;
+    ]
+  ;;
+
+  let sexp_of_decl d =
+    let { linkage_name; name; } = d in
+    Sexp.List [
+      Linkage_name.sexp_of_t linkage_name;
+      Sexp.t_of_string name;
+    ]
+  ;;
+
+  let sexp_of_trace_item ti =
+    let open Sexp in 
+    match ti with
+    | Apply a -> List [ Atom "Apply"; sexp_of_apply a; ]
+    | Decl d  -> List [ Atom "Decl"; sexp_of_decl d; ]
+  ;;
+
   let trace_item_of_sexp sexp =
     let open Sexp in
     match sexp with
@@ -423,11 +446,24 @@ module Simple_overrides = struct
       raise (Sexp.Parse_error "bla")
   ;;
 
+  let sexp_of_entry entry =
+    let open Sexp in
+    let { round; apply_id_stamp; trace; action } = entry in
+    List [
+      Sexp.t_of_int round;
+      Option.sexp_of_t Sexp.t_of_int apply_id_stamp;
+      Sexp.t_of_list sexp_of_trace_item trace;
+      Action.sexp_of_t action;
+    ]
+  ;;
+
   let load_from_channel ic =
     Sexp.list_of_t entry_of_sexp (Sexp_file.load_from_channel ic)
   ;;
 
   let t_of_sexp sexp = Sexp.list_of_t entry_of_sexp sexp
+
+  let sexp_of_t t = Sexp.t_of_list sexp_of_entry t
 
   let trace_semantically_equal (our_trace : trace_item list) (v1_trace : Trace_item.t list) =
     let rec loop our_trace v1_trace =
@@ -544,8 +580,11 @@ module Multiversion_overrides = struct
           V1 chosen
         with
         | Sexp.Parse_error _  ->
+          let res = 
+            V0 (Sexp.list_of_sexp V0.t_of_sexp sexp)
+          in
           Format.printf "Loadded (DEPREACATED) V0 overrides from %s\n"
               filename;
-          V0 (Sexp.list_of_sexp V0.t_of_sexp sexp)
+          res
         end
 end
