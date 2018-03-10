@@ -64,6 +64,8 @@ module Simple_overrides : sig
   type t
 
   val load_from_channel : in_channel -> t
+
+  val of_v1_overrides : Overrides.t -> t
 end
 
 
