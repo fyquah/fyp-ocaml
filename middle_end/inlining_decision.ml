@@ -467,6 +467,7 @@ let inline env r ~apply_id ~kind ~call_site ~lhs_of_application
          the function, without doing any further inlining upon it, to the call
          site. *)
       Inlining_transforms.inline_by_copying_function_body ~env
+        ~call_site_apply_id:apply_id
         ~r:(R.reset_benefit r) ~function_decls ~lhs_of_application
         ~closure_id_being_applied ~specialise_requested ~inline_requested
         ~function_decl ~args ~dbg ~simplify
@@ -864,6 +865,7 @@ let for_call_site
     let env = E.inside_inlined_stub env applied_function_metadata call_site in
     let body, r =
       Inlining_transforms.inline_by_copying_function_body ~env
+        ~call_site_apply_id:apply_id
         ~r ~function_decls ~lhs_of_application
         ~closure_id_being_applied ~specialise_requested ~inline_requested
         ~function_decl ~args ~dbg ~simplify
