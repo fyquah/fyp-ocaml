@@ -779,7 +779,28 @@ and simplify_apply env r ~(apply : Flambda.apply) : Flambda.t * R.t =
           in
           wrap result, r
         | Wrong ->  (* Insufficient approximation information to simplify. *)
+          let module DC = Data_collector in
           let apply_id = apply.apply_id in
+          let metadata =  DC.Function_metadata.unknown in
+          let trace =
+            let tos =
+              let applied = metadata in
+              match E.current_closure env with
+              | None ->
+                DC.Trace_item.At_call_site
+                  { source = None; apply_id; applied; }
+              | Some (source_closure : DC.Function_metadata.t) ->
+                 DC.Trace_item.At_call_site
+                   { source = Some source_closure; applied; apply_id; }
+            in
+            tos :: E.inlining_trace env
+          in
+          let create_datum action =
+            let round = E.round env in
+            { DC.Decision. round; trace; apply_id; action; metadata; }
+          in
+          DC.Decision.recorded_from_flambda :=
+            create_datum DC.Action.Apply :: !DC.Decision.recorded_from_flambda;
           Apply ({ func = lhs_of_application; args; kind = Indirect; dbg;
               apply_id;
               inline = inline_requested; specialise = specialise_requested; }),

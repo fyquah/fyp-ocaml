@@ -436,9 +436,10 @@ let inline env r ~apply_id ~kind ~call_site ~lhs_of_application
     else
       None
   in
-  let always_inline = 
+  let always_inline =
     match found with
     | Some Data_collector.Action.Inline -> true
+    | Some Data_collector.Action.Specialise
     | Some Apply
     | None -> always_inline
   in
@@ -446,7 +447,8 @@ let inline env r ~apply_id ~kind ~call_site ~lhs_of_application
     match found with
     | Some Data_collector.Action.Inline -> Try_it
     | Some Apply -> Don't_try_it S.Not_inlined.Override
-    | _ -> try_inlining
+    | Some Data_collector.Action.Specialise
+    | None -> try_inlining
   in
   match try_inlining with
   | Don't_try_it decision ->
@@ -852,14 +854,20 @@ let for_call_site
   let original_r =
     R.set_approx (R.seen_direct_application r) (A.value_unknown Other)
   in
+  let create_v1_datum action =
+    let trace = snd call_site :: E.inlining_trace env in
+    let metadata = applied_function_metadata in
+    let round = E.round env in
+    { DC.Decision. round; trace; apply_id; action; metadata; }
+  in
   if function_decl.stub then begin
+    let env = E.inside_inlined_stub env applied_function_metadata call_site in
     let body, r =
       Inlining_transforms.inline_by_copying_function_body ~env
         ~r ~function_decls ~lhs_of_application
         ~closure_id_being_applied ~specialise_requested ~inline_requested
         ~function_decl ~args ~dbg ~simplify
     in
-    let env = E.inside_inlined_stub env applied_function_metadata call_site in
     simplify env r body
   end else if E.never_inline env then begin
     (* This case only occurs when examining the body of a stub function
@@ -938,6 +946,8 @@ let for_call_site
         in
         match specialise_result with
         | Changed (res, spec_reason) ->
+          DC.Decision.recorded_from_flambda :=
+            create_v1_datum DC.Action.Specialise :: !DC.Decision.recorded_from_flambda;
           Changed (res, D.Specialised spec_reason)
         | Original spec_reason ->
           let only_use_of_function = false in
