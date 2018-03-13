@@ -619,9 +619,7 @@ module Make (T : S) = struct
         in
         function_decl.params @ new_params
       in
-      let closure_origin =
-        Closure_origin.create (Closure_id.wrap new_fun_var)
-      in
+      let closure_origin = function_decl.closure_origin in
       let rewritten_function_decl =
         Flambda.create_function_declaration
           ~params:all_params
