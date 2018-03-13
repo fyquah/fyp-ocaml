@@ -114,6 +114,7 @@ let copy_of_function's_body_with_freshened_params env
     (= "variables bound by the closure"), and any function identifiers
     introduced by the corresponding set of closures. *)
 let inline_by_copying_function_body ~env ~r
+      ~call_site_apply_id
       ~(function_decls : Flambda.function_declarations)
       ~lhs_of_application
       ~(inline_requested : Lambda.inline_attribute)
@@ -181,7 +182,19 @@ let inline_by_copying_function_body ~env ~r
   let env = E.activate_freshening (E.set_never_inline env) in
   let env = E.set_inline_debuginfo ~dbg env in
   let env = E.bump_offset env in
+  let expr =
+    let f_t = function
+      | Flambda.Apply apply ->
+        let caller = call_site_apply_id in
+        let apply_id = Apply_id.inline ~caller ~inlined:apply.apply_id in
+        Flambda.Apply { apply with apply_id }
+      | otherwise -> otherwise
+    in
+    let f_named = fun x -> x in
+    Flambda_iterators.map_toplevel f_t f_named expr
+  in
   simplify env r expr
+;;
 
 let inline_by_copying_function_declaration ~env ~r
     ~(function_decls : Flambda.function_declarations)
