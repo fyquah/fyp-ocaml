@@ -159,14 +159,14 @@ let in_compilation_unit t c = Compilation_unit.equal c t.compilation_unit
 let get_compilation_unit t = t.compilation_unit
 
 let get_inlining_path t =
-  let rec loop ~(acc : stamp list) (apply_id : t) =
+  let rec loop ~(acc : (Compilation_unit.t * stamp) list) (apply_id : t) =
     let parents =
       match apply_id.parents with
       | None -> Misc.fatal_error "This apply_id does not support parents"
       | Some x ->  x
     in
     List.fold_right (fun parent acc -> loop ~acc parent)
-       parents (apply_id.stamp :: acc)
+       parents ((apply_id.compilation_unit, apply_id.stamp) :: acc)
   in
   loop ~acc:[] t
 ;;

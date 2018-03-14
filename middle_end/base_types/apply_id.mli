@@ -45,10 +45,12 @@ val print : Format.formatter -> t -> unit
 
 val get_stamp : stamp -> int option
 
+val compare_stamp : stamp -> stamp -> int
+
 
 (* This is the identifier denoted in the unique path-labelling section of
  * the thesis
  *)
-val get_inlining_path : t -> stamp list
+val get_inlining_path : t -> (Compilation_unit.t * stamp) list
 
 val inline : caller: t -> inlined: t -> t
