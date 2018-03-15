@@ -253,13 +253,22 @@ module V1 = struct
     ;;
 
     let minimally_equal a b =
+      let co_eq a b =
+        match a, b with
+        | None, None -> false
+        | Some _, None -> false
+        | None, Some _ -> false
+        | Some a, Some b ->
+          Compilation_unit.equal (Closure_origin.get_compilation_unit a)
+            (Closure_origin.get_compilation_unit b)
+          && String.equal (Closure_origin.get_name a) (Closure_origin.get_name b)
+      in
       match a, b with
       | Enter_decl a, Enter_decl b ->
-        let a = a.declared.closure_origin in
-        let b = b.declared.closure_origin in
-        Compilation_unit.equal (Closure_origin.get_compilation_unit a)
-          (Closure_origin.get_compilation_unit b)
-        && String.equal (Closure_origin.get_name a) (Closure_origin.get_name b)
+        (co_eq (Some a.declared.closure_origin) (Some b.declared.closure_origin)
+         || co_eq (Some a.declared.closure_origin) (b.declared.opt_closure_origin)
+         || co_eq (a.declared.opt_closure_origin) (Some b.declared.closure_origin)
+         || co_eq (a.declared.opt_closure_origin) (b.declared.opt_closure_origin))
 
       | At_call_site a, At_call_site b ->
         Apply_id.equal_accounting_deprecation a.apply_id b.apply_id
