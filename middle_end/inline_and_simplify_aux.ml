@@ -453,8 +453,9 @@ module Env = struct
     let declared =
       let closure_id = Some closure_id in
       let set_of_closures_id = Some set_of_closures_id in
+      let opt_closure_origin = None in
       { DC.Function_metadata.
-        closure_id; set_of_closures_id; closure_origin;
+        closure_id; set_of_closures_id; closure_origin; opt_closure_origin;
       }
     in
     let t =
