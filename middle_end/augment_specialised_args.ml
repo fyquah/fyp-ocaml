@@ -543,6 +543,7 @@ module Make (T : S) = struct
         ~inline:Default_inline
         ~specialise:Default_specialise
         ~is_a_functor:false
+        ~stable_closure_origin:function_decl.stable_closure_origin
         ~closure_origin:function_decl.closure_origin
     in
     new_fun_var, new_function_decl, rewritten_existing_specialised_args,
@@ -631,6 +632,7 @@ module Make (T : S) = struct
           ~inline:function_decl.inline
           ~specialise:function_decl.specialise
           ~is_a_functor:function_decl.is_a_functor
+          ~stable_closure_origin:function_decl.stable_closure_origin
           ~closure_origin
       in
       let funs, direct_call_surrogates =

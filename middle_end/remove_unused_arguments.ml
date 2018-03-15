@@ -42,6 +42,7 @@ let remove_params unused (fun_decl: Flambda.function_declaration)
     ~stub:fun_decl.stub ~dbg:fun_decl.dbg ~inline:fun_decl.inline
     ~specialise:fun_decl.specialise ~is_a_functor:fun_decl.is_a_functor
     ~closure_origin:(Closure_origin.create (Closure_id.wrap new_fun_var))
+    ~stable_closure_origin:fun_decl.stable_closure_origin
 
 let make_stub unused var (fun_decl : Flambda.function_declaration)
     ~specialised_args ~additional_specialised_args =
@@ -101,6 +102,7 @@ let make_stub unused var (fun_decl : Flambda.function_declaration)
       ~stub:true ~dbg:fun_decl.dbg ~inline:Default_inline
       ~specialise:Default_specialise ~is_a_functor:fun_decl.is_a_functor
       ~closure_origin:fun_decl.closure_origin
+      ~stable_closure_origin: fun_decl.stable_closure_origin
   in
   function_decl, renamed, additional_specialised_args
 
@@ -127,7 +129,7 @@ let separate_unused_arguments ~only_specialised
   else begin
     let funs, additional_specialised_args =
       Variable.Map.fold (fun fun_id (fun_decl : Flambda.function_declaration)
-                          (funs, additional_specialised_args) ->
+                          ((funs : Flambda.function_declaration Variable.Map.t), additional_specialised_args) ->
           if List.exists (fun v -> Variable.Set.mem (Parameter.var v) unused)
               fun_decl.params
           then begin

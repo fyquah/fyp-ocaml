@@ -98,10 +98,13 @@ let tupled_function_call_stub original_params unboxed_version ~closure_bound_var
       (0, call) params
   in
   let tuple_param = Parameter.wrap tuple_param_var in
+  let closure_origin =
+    Closure_origin.create (Closure_id.wrap closure_bound_var)
+  in
   Flambda.create_function_declaration ~params:[tuple_param]
     ~body ~stub:true ~dbg:Debuginfo.none ~inline:Default_inline
     ~specialise:Default_specialise ~is_a_functor:false
-    ~closure_origin:(Closure_origin.create (Closure_id.wrap closure_bound_var))
+    ~closure_origin ~stable_closure_origin:closure_origin
 
 let register_const t (constant:Flambda.constant_defining_value) name
       : Flambda.constant_defining_value_block_field * string =
@@ -575,12 +578,13 @@ and close_functions t external_env function_declarations : Flambda.named =
     let closure_origin =
       Closure_origin.create (Closure_id.wrap unboxed_version)
     in
+    let stable_closure_origin = closure_origin in
     let fun_decl =
       Flambda.create_function_declaration ~params ~body ~stub ~dbg
         ~inline:(Function_decl.inline decl)
         ~specialise:(Function_decl.specialise decl)
         ~is_a_functor:(Function_decl.is_a_functor decl)
-        ~closure_origin
+        ~closure_origin ~stable_closure_origin
     in
     match Function_decl.kind decl with
     | Curried -> Variable.Map.add closure_bound_var fun_decl map

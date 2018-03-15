@@ -638,6 +638,7 @@ and simplify_set_of_closures original_env r
         ~body ~stub:function_decl.stub ~dbg:function_decl.dbg
         ~inline ~specialise:function_decl.specialise
         ~is_a_functor:function_decl.is_a_functor
+        ~stable_closure_origin:function_decl.stable_closure_origin
         ~closure_origin:function_decl.closure_origin
     in
     let used_params' = Flambda.used_params function_decl in
@@ -867,7 +868,9 @@ and simplify_partial_application env r ~apply_id ~lhs_of_application
         ~append:"_partial_fun"
         (Closure_id.unwrap closure_id_being_applied)
     in
-    Flambda_utils.make_closure_declaration ~id:closure_variable
+    let stable_closure_origin = function_decl.Flambda.stable_closure_origin in
+    Flambda_utils.make_closure_declaration ~stable_closure_origin
+      ~id:closure_variable
       ~body
       ~params:remaining_args
       ~stub:true
@@ -1494,6 +1497,7 @@ and duplicate_function ~env ~(set_of_closures : Flambda.set_of_closures)
       ~inline:function_decl.inline ~specialise:function_decl.specialise
       ~is_a_functor:function_decl.is_a_functor
       ~closure_origin:(Closure_origin.create (Closure_id.wrap new_fun_var))
+      ~stable_closure_origin:function_decl.stable_closure_origin
   in
   function_decl, specialised_args
 

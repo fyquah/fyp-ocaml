@@ -141,7 +141,8 @@ and import_function_declarations_for_pack_aux units pack
           ~inline:function_decl.inline
           ~specialise:function_decl.specialise
           ~is_a_functor:function_decl.is_a_functor
-          ~closure_origin:function_decl.closure_origin)
+          ~closure_origin:function_decl.closure_origin
+          ~stable_closure_origin:function_decl.stable_closure_origin)
       function_decls.funs
   in
   Flambda.import_function_declarations_for_pack

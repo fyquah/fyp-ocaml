@@ -301,6 +301,7 @@ and function_declarations = private {
 }
 
 and function_declaration = private {
+  stable_closure_origin: Closure_origin.t;
   closure_origin: Closure_origin.t;
   params : Parameter.t list;
   body : t;
@@ -556,6 +557,7 @@ val create_function_declaration
   -> specialise:Lambda.specialise_attribute
   -> is_a_functor:bool
   -> closure_origin:Closure_origin.t
+  -> stable_closure_origin:Closure_origin.t
   -> function_declaration
 
 (** Create a set of function declarations given the individual declarations. *)

@@ -117,6 +117,7 @@ and function_declarations = {
 }
 
 and function_declaration = {
+  stable_closure_origin: Closure_origin.t;
   closure_origin: Closure_origin.t;
   params : Parameter.t list;
   body : t;
@@ -989,7 +990,8 @@ let free_symbols_program (program : program) =
 
 let update_body_of_function_declaration (func_decl: function_declaration)
       ~body : function_declaration =
-  { closure_origin = func_decl.closure_origin;
+  { stable_closure_origin = func_decl.stable_closure_origin;
+    closure_origin = func_decl.closure_origin;
     params = func_decl.params;
     body;
     free_variables = free_variables body;
@@ -1003,7 +1005,8 @@ let update_body_of_function_declaration (func_decl: function_declaration)
 
 let update_function_decl's_params_and_body
       (func_decl : function_declaration) ~params ~body =
-  { closure_origin = func_decl.closure_origin;
+  { stable_closure_origin = func_decl.stable_closure_origin;
+    closure_origin = func_decl.closure_origin;
     params;
     body;
     free_variables = free_variables body;
@@ -1020,6 +1023,7 @@ let create_function_declaration ~params ~body ~stub ~dbg
       ~(inline : Lambda.inline_attribute)
       ~(specialise : Lambda.specialise_attribute) ~is_a_functor
       ~closure_origin
+      ~stable_closure_origin
       : function_declaration =
   begin match stub, inline with
   | true, (Never_inline | Default_inline)
@@ -1037,7 +1041,8 @@ let create_function_declaration ~params ~body ~stub ~dbg
       "Stubs may not be annotated as [Always_specialise]: %a"
       print body
   end;
-  { closure_origin;
+  { stable_closure_origin;
+    closure_origin;
     params;
     body;
     free_variables = free_variables body;
