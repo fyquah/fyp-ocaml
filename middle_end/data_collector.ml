@@ -240,7 +240,7 @@ module V1 = struct
         && String.equal (Closure_origin.get_name a) (Closure_origin.get_name b)
 
       | At_call_site a, At_call_site b ->
-        Apply_id.equal a.apply_id b.apply_id
+        Apply_id.equal_accounting_deprecation a.apply_id b.apply_id
 
       | _ -> false
   end
