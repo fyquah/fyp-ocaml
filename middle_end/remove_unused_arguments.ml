@@ -24,7 +24,7 @@ let rename_var var =
     ~current_compilation_unit:(Compilation_unit.get_current_exn ())
 
 let remove_params unused (fun_decl: Flambda.function_declaration)
-      ~new_fun_var:_ =
+      ~new_fun_var =
   let unused_params, used_params =
     List.partition (fun v -> Variable.Set.mem (Parameter.var v) unused)
       fun_decl.params
@@ -41,7 +41,7 @@ let remove_params unused (fun_decl: Flambda.function_declaration)
   Flambda.create_function_declaration ~params:used_params ~body
     ~stub:fun_decl.stub ~dbg:fun_decl.dbg ~inline:fun_decl.inline
     ~specialise:fun_decl.specialise ~is_a_functor:fun_decl.is_a_functor
-    ~closure_origin:fun_decl.closure_origin
+    ~closure_origin:(Closure_origin.create (Closure_id.wrap new_fun_var))
 
 let make_stub unused var (fun_decl : Flambda.function_declaration)
     ~specialised_args ~additional_specialised_args =
