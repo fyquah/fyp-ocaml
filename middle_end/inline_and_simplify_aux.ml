@@ -443,7 +443,7 @@ module Env = struct
             t.inlining_stats_closure_stack ~closure_ids;
       }
 
-  let enter_closure t ~closure_id ~closure_origin ~set_of_closures_id
+  let enter_closure t ~closure_id ~stable_closure_origin ~closure_origin ~set_of_closures_id
         ~inline_inside ~dbg ~f ~lambda_size ~bound_vars =
     let t =
       if inline_inside && not t.never_inline_inside_closures then t
@@ -453,8 +453,9 @@ module Env = struct
     let declared =
       let closure_id = Some closure_id in
       let set_of_closures_id = Some set_of_closures_id in
+      let opt_closure_origin = Some stable_closure_origin in
       { DC.Function_metadata.
-        closure_id; set_of_closures_id; closure_origin;
+        closure_id; set_of_closures_id; closure_origin; opt_closure_origin;
       }
     in
     let t =
