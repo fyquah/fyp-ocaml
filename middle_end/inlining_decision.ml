@@ -798,6 +798,7 @@ let for_call_site
       set_of_closures_id = Some function_decls.set_of_closures_id;
       closure_origin = function_decl.closure_origin;
       opt_closure_origin = None;
+      specialised_for = function_decls.specialised_for;
     }
   in
   let call_site =

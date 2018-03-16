@@ -114,6 +114,7 @@ and function_declarations = {
   set_of_closures_id : Set_of_closures_id.t;
   set_of_closures_origin : Set_of_closures_origin.t;
   funs : function_declaration Variable.Map.t;
+  specialised_for : Apply_id.t option;
 }
 
 and function_declaration = {
@@ -1058,6 +1059,7 @@ let create_function_declarations ~funs =
   { set_of_closures_id;
     set_of_closures_origin;
     funs;
+    specialised_for = None;
   }
 
 let update_function_declarations function_decls ~funs =
@@ -1067,7 +1069,12 @@ let update_function_declarations function_decls ~funs =
   { set_of_closures_id;
     set_of_closures_origin;
     funs;
+    specialised_for = function_decls.specialised_for;
   }
+
+let update_specialisation_info function_declarations apply_id =
+  { function_declarations with specialised_for = Some apply_id; }
+;;
 
 let import_function_declarations_for_pack function_decls
     import_set_of_closures_id import_set_of_closures_origin =
@@ -1076,6 +1083,7 @@ let import_function_declarations_for_pack function_decls
     set_of_closures_origin =
       import_set_of_closures_origin function_decls.set_of_closures_origin;
     funs = function_decls.funs;
+    specialised_for = function_decls.specialised_for;
   }
 
 let create_set_of_closures ~function_decls ~free_vars ~specialised_args

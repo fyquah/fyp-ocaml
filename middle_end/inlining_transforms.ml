@@ -504,6 +504,9 @@ let inline_by_copying_function_declaration ~env ~r
     let function_decls =
       Flambda.update_function_declarations ~funs function_decls
     in
+    let function_decls =
+      Flambda.update_specialisation_info function_decls apply_id
+    in
     let set_of_closures =
       (* This is the new set of closures, with more precise specialisation
          information than the one being copied. *)

@@ -298,6 +298,7 @@ and function_declarations = private {
   funs : function_declaration Variable.Map.t;
   (** The function(s) defined by the set of function declarations.  The
       keys of this map are often referred to in the code as "fun_var"s. *)
+  specialised_for : Apply_id.t option;
 }
 
 and function_declaration = private {
@@ -583,6 +584,8 @@ val update_function_declarations
    : function_declarations
   -> funs:function_declaration Variable.Map.t
   -> function_declarations
+
+val update_specialisation_info : function_declarations -> Apply_id.t -> function_declarations
 
 val import_function_declarations_for_pack
    : function_declarations
