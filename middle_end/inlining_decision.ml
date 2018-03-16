@@ -796,8 +796,9 @@ let for_call_site
     { DC.Function_metadata.
       closure_id = Some closure_id_being_applied;
       set_of_closures_id = Some function_decls.set_of_closures_id;
-      closure_origin = function_decl.closure_origin;
-      opt_closure_origin = Some function_decl.stable_closure_origin;
+      closure_origin = function_decl.stable_closure_origin;
+      opt_closure_origin = Some function_decl.closure_origin;
+      specialised_for = function_decls.specialised_for;
     }
   in
   let call_site =

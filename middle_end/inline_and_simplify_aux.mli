@@ -271,6 +271,7 @@ module Env : sig
     -> closure_id:Closure_id.t
     -> stable_closure_origin: Closure_origin.t
     -> closure_origin: Closure_origin.t
+    -> specialised_for: Apply_id.t option
     -> set_of_closures_id: Set_of_closures_id.t
     -> inline_inside:bool
     -> dbg:Debuginfo.t

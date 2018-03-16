@@ -603,6 +603,7 @@ and simplify_set_of_closures original_env r
         ~set_of_closures_id:(function_decls.set_of_closures_id)
         ~closure_origin:function_decl.closure_origin
         ~stable_closure_origin:function_decl.stable_closure_origin
+        ~specialised_for:function_decls.specialised_for
         ~inline_inside:
           (Inlining_decision.should_inline_inside_declaration function_decl)
         ~dbg:function_decl.dbg
@@ -1484,6 +1485,7 @@ and duplicate_function ~env ~(set_of_closures : Flambda.set_of_closures)
       ~set_of_closures_id:(function_decls.set_of_closures_id)
       ~closure_origin:function_decl.closure_origin
       ~stable_closure_origin:function_decl.stable_closure_origin
+      ~specialised_for:function_decls.specialised_for
       ~inline_inside:false
       ~dbg:function_decl.dbg
       ~f:(fun body_env ->
