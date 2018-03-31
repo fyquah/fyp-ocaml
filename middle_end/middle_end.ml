@@ -145,7 +145,7 @@ let middle_end ppf ~prefixname ~backend
                +-+ ("lift_lets 3", Lift_code.lift_lets)
                +-+ ("Inline_and_simplify noinline",
                     Inline_and_simplify.run ~never_inline:true ~backend
-                      ~inlining_overrides:Data_collector.Multiversion_overrides.Don't
+                      ~inlining_overrides:Data_collector.Multiversion_overrides.don't
                       ~prefixname ~round)
                +-+ ("Remove_unused_closure_vars 3",
                     Remove_unused_closure_vars.remove_unused_closure_variables
