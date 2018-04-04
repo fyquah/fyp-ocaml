@@ -83,6 +83,7 @@ let middle_end ppf ~prefixname ~backend
            end;
            flam
          in
+         Variable.reset_ctr ();
          Profile.record_call ~accumulate:true "middle_end" (fun () ->
            let flam =
              Profile.record_call ~accumulate:true "closure_conversion"
