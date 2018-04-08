@@ -28,7 +28,10 @@ type wsb = {
 }
 
 type t =
-  { (* callee features *)
+  { apply_id                         : Apply_id.t;
+    flambda_wsb                      : wsb;
+
+    (* callee features *)
     params                           : int;
     bound_vars_to_symbol             : int;
     assign                           : int;
@@ -55,6 +58,7 @@ type t =
     call_context_stack               : call_context list;
     direct_call                      : bool;
     recursive_call                   : bool;
+    only_use_of_function             : bool;
 
     (* environment features -- this is same for all siblings *)
     inlining_depth                   : int;
@@ -64,7 +68,6 @@ type t =
     original_bound_vars              : int option;
     flambda_round                    : int;
     flambda_tries                    : bool;
-    flambda_wsb                      : wsb;
   }
 
 let empty
@@ -78,7 +81,7 @@ let empty
     (* env information *)
     ~inlining_depth ~closure_depth ~in_recursive_function
     ~original_function_size ~original_bound_vars ~flambda_round
-    ~flambda_tries ~flambda_wsb
+    ~flambda_tries ~flambda_wsb ~apply_id ~only_use_of_function
   =
   { (* callee features *)
     params                           ;
@@ -107,6 +110,7 @@ let empty
     call_context_stack               ;
     direct_call                      ;
     recursive_call                   ;
+    only_use_of_function;
 
     (* environment features -- this is same for all siblings *)
     inlining_depth                   ;
@@ -116,7 +120,10 @@ let empty
     original_bound_vars              ;
     flambda_round                    ;
     flambda_tries                    ;
+
     flambda_wsb                      ;
+    apply_id                         ;
+
   }
 
 let (mined_features : t list ref) = ref []

@@ -28,7 +28,11 @@ type wsb = {
 }
 
 type t =
-  { (* callee features *)
+  { (* Used by Flambda *)
+    apply_id                         : Apply_id.t;
+    flambda_wsb                      : wsb;
+
+    (* callee features *)
     params                           : int;
     bound_vars_to_symbol             : int;
     assign                           : int;
@@ -55,6 +59,7 @@ type t =
     call_context_stack               : call_context list;
     direct_call                      : bool;
     recursive_call                   : bool;
+    only_use_of_function             : bool;
 
     (* environment features -- this is same for all siblings *)
     inlining_depth                   : int;
@@ -64,7 +69,6 @@ type t =
     original_bound_vars              : int option;
     flambda_round                    : int;
     flambda_tries                    : bool;
-    flambda_wsb                      : wsb;
   }
 
 val empty
@@ -85,6 +89,8 @@ val empty
   -> flambda_round: int
   -> flambda_tries: bool
   -> flambda_wsb: wsb
+  -> apply_id: Apply_id.t
+  -> only_use_of_function: bool
   -> t
 
 val mined_features : t list ref

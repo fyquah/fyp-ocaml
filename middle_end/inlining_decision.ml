@@ -59,7 +59,9 @@ let extract_features
     ~(size_before_simplify : int)
     ~(size_after_simplify  : int)
     ~(flambda_tries: bool)
-    ~(flambda_wsb: Feature_extractor.wsb) =
+    ~(flambda_wsb: Feature_extractor.wsb)
+    ~only_use_of_function
+    ~(apply_id: Apply_id.t) =
   let function_decls = value_set_of_closures.function_decls in
   let is_annonymous =
     find_substring
@@ -111,6 +113,8 @@ let extract_features
       ~flambda_round
       ~flambda_wsb
       ~closure_depth:(E.closure_depth env)
+      ~apply_id
+      ~only_use_of_function
   in
   let init =
     let free_vars =
@@ -469,7 +473,8 @@ let inline env r ~apply_id ~kind ~call_site ~lhs_of_application
     let closure_id = closure_id_being_applied in
     extract_features ~kind ~closure_id ~env ~function_decl
       ~size_before_simplify ~size_after_simplify:size_before_simplify
-      ~value_set_of_closures ~flambda_tries:false ~flambda_wsb
+      ~value_set_of_closures ~flambda_tries:false ~flambda_wsb ~apply_id
+      ~only_use_of_function
   in
   begin match try_inlining with
   | Don't_try_it decision ->
