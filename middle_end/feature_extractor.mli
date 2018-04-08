@@ -12,6 +12,21 @@ type call_context =
   | Inlined_function
   | In_function_declaration
 
+type wsb = {
+    (* These are used by FLambda in WSB *)
+    round                            : int;
+    toplevel                         : bool;
+    branch_depth                     : int;
+    lifting                          : bool;
+    original_size                    : int;
+    new_size                         : int;
+    benefit_remove_call              : int;
+    benefit_remove_alloc             : int;
+    benefit_remove_prim              : int;
+    benefit_remove_branch            : int;
+    benefit_direct_call_of_indirect  : int;
+}
+
 type t =
   { (* callee features *)
     params                           : int;
@@ -49,6 +64,7 @@ type t =
     original_bound_vars              : int option;
     flambda_round                    : int;
     flambda_tries                    : bool;
+    flambda_wsb                      : wsb;
   }
 
 val empty
@@ -68,6 +84,7 @@ val empty
   -> original_bound_vars: int option
   -> flambda_round: int
   -> flambda_tries: bool
+  -> flambda_wsb: wsb
   -> t
 
 val mined_features : t list ref

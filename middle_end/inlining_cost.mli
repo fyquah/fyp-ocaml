@@ -121,6 +121,8 @@ module Whether_sufficient_benefit : sig
   val to_string : t -> string
 
   val print_description : subfunctions:bool -> Format.formatter -> t -> unit
+
+  val to_feature_extractor_wsb : t -> Feature_extractor.wsb
 end
 
 val scale_inline_threshold_by : int

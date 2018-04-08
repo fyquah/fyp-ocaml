@@ -406,6 +406,23 @@ module Whether_sufficient_benefit = struct
     estimate : bool;
   }
 
+  let to_feature_extractor_wsb t =
+    let benefit = t.benefit in
+    { Feature_extractor.
+      round = t.round;
+      toplevel = t.toplevel;
+      branch_depth = t.branch_depth;
+      lifting = t.lifting;
+      original_size = t.original_size;
+      new_size                        = t.new_size;
+      benefit_remove_call             = benefit.remove_call;
+      benefit_remove_alloc            = benefit.remove_alloc;
+      benefit_remove_prim             = benefit.remove_prim;
+      benefit_remove_branch           = benefit.remove_branch;
+      benefit_direct_call_of_indirect = benefit.direct_call_of_indirect;
+    }
+  ;;
+
   let create ~original ~toplevel ~branch_depth lam ~benefit ~lifting ~round =
     let evaluated_benefit = Benefit.evaluate benefit ~round in
     { round; benefit; toplevel; branch_depth; lifting;

@@ -50,7 +50,7 @@ let hd_opt a =
   | [] -> None
   | hd :: _ -> Some hd
 
-let actually_extract_features
+let extract_features 
     ~(kind : Flambda.call_kind)
     ~(closure_id : Closure_id.t)
     ~(env : E.t)
@@ -58,7 +58,8 @@ let actually_extract_features
     ~(value_set_of_closures: Simple_value_approx.value_set_of_closures)
     ~(size_before_simplify : int)
     ~(size_after_simplify  : int)
-    ~(flambda_tries: bool) =
+    ~(flambda_tries: bool)
+    ~(flambda_wsb: Feature_extractor.wsb) =
   let function_decls = value_set_of_closures.function_decls in
   let is_annonymous =
     find_substring
@@ -108,6 +109,7 @@ let actually_extract_features
       ~original_function_size
       ~original_bound_vars
       ~flambda_round
+      ~flambda_wsb
       ~closure_depth:(E.closure_depth env)
   in
   let init =
@@ -220,18 +222,7 @@ let actually_extract_features
     )
     (fun (_named : Flambda.named) -> ())
     function_decl.body;
-  Feature_extractor.mined_features :=
-    !state :: !Feature_extractor.mined_features;
-;;
-
-let extract_features ~kind ~closure_id ~env ~function_decl
-     ~value_set_of_closures ~size_before_simplify ~size_after_simplify
-     ~flambda_tries =
-  if Config.extract_features then begin
-    actually_extract_features ~kind ~closure_id ~env ~function_decl
-      ~value_set_of_closures ~size_before_simplify ~size_after_simplify
-      ~flambda_tries
-  end
+  !state
 ;;
 
 let inline env r ~apply_id ~kind ~call_site ~lhs_of_application
@@ -450,14 +441,39 @@ let inline env r ~apply_id ~kind ~call_site ~lhs_of_application
     | Some Data_collector.Action.Specialise
     | None -> try_inlining
   in
-  match try_inlining with
-  | Don't_try_it decision ->
+  let base_features =
+    let size_before_simplify =
+      Inlining_cost.lambda_size function_decl.body
+    in
+    let flambda_wsb =
+      let body, r_inlined =
+        (* First we construct the code that would result from copying the body of
+           the function, without doing any further inlining upon it, to the call
+           site. *)
+        Inlining_transforms.inline_by_copying_function_body ~env
+          ~call_site_apply_id:apply_id
+          ~r:(R.reset_benefit r) ~function_decls ~lhs_of_application
+          ~closure_id_being_applied ~specialise_requested ~inline_requested
+          ~function_decl ~args ~dbg ~simplify
+      in
+      let whether_sufficient_benefit =
+        W.create ~original body
+          ~toplevel:(E.at_toplevel env)
+          ~branch_depth:(E.branch_depth env)
+          ~lifting:function_decl.Flambda.is_a_functor
+          ~round:(E.round env)
+          ~benefit:(R.benefit r_inlined)
+      in
+      W.to_feature_extractor_wsb whether_sufficient_benefit
+    in
     let closure_id = closure_id_being_applied in
-    let size = Inlining_cost.lambda_size function_decl.body in
     extract_features ~kind ~closure_id ~env ~function_decl
-      ~size_before_simplify:size ~size_after_simplify:size
-      ~value_set_of_closures ~flambda_tries:false;
-    Original decision
+      ~size_before_simplify ~size_after_simplify:size_before_simplify
+      ~value_set_of_closures ~flambda_tries:false ~flambda_wsb
+  in
+  begin match try_inlining with
+  | Don't_try_it decision ->
+    (base_features, Original decision)
   | Try_it ->
     let r =
       R.set_inlining_threshold r (Some remaining_inlining_threshold)
@@ -472,14 +488,10 @@ let inline env r ~apply_id ~kind ~call_site ~lhs_of_application
         ~closure_id_being_applied ~specialise_requested ~inline_requested
         ~function_decl ~args ~dbg ~simplify
     in
-    let size_before_simplify =
-      Inlining_cost.lambda_size function_decl.body
-    in
     let size_after_simplify = Inlining_cost.lambda_size body in
-    extract_features ~kind ~closure_id:closure_id_being_applied
-      ~env ~size_before_simplify
-      ~size_after_simplify ~function_decl
-      ~value_set_of_closures ~flambda_tries:true;
+    let features =
+      { base_features with size_after_simplify }
+    in
     let num_direct_applications_seen =
       (R.num_direct_applications r_inlined) - (R.num_direct_applications r)
     in
@@ -517,7 +529,7 @@ let inline env r ~apply_id ~kind ~call_site ~lhs_of_application
         then env
         else E.inlining_level_up env
       in
-      Changed ((simplify env r body), decision)
+      (features, Changed ((simplify env r body), decision))
     in
     if always_inline then
       keep_inlined_version S.Inlined.Annotation
@@ -540,7 +552,7 @@ let inline env r ~apply_id ~kind ~call_site ~lhs_of_application
          first.  We try that next, unless it is known that there were
          no direct applications in the simplified body computed above, meaning
          no opportunities for inlining. *)
-        Original (S.Not_inlined.Without_subfunctions wsb)
+        (features, Original (S.Not_inlined.Without_subfunctions wsb))
       end else begin
         let env = E.inlining_level_up env in
         let env = E.note_entering_inlined env call_site in
@@ -566,7 +578,7 @@ let inline env r ~apply_id ~kind ~call_site ~lhs_of_application
           let decision =
             S.Inlined.With_subfunctions (wsb, wsb_with_subfunctions)
           in
-          Changed (res, decision)
+          (features, Changed (res, decision))
         end
         else begin
           (* r_inlined contains an approximation that may be invalid for the
@@ -578,10 +590,15 @@ let inline env r ~apply_id ~kind ~call_site ~lhs_of_application
           let decision =
             S.Not_inlined.With_subfunctions (wsb, wsb_with_subfunctions)
           in
-          Original decision
+          (features, Original decision)
         end
       end
     end
+  end
+  |> (fun (features, ret) ->
+      Feature_extractor.mined_features :=
+        features :: !Feature_extractor.mined_features;
+        ret)
 
 let specialise env r ~lhs_of_application ~apply_id
       ~(function_decls : Flambda.function_declarations)
