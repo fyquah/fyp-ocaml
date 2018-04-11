@@ -206,15 +206,12 @@ let middle_end ppf ~prefixname ~backend
            let () =
              match !Clflags.dump_features with
              | None -> ()
-             | Some file ->
-               let file =
-                 match file with 
-                 | "" -> Format.sprintf "%s.flambda.features" prefixname
-                 | _ -> file
-               in
+             | Some "V0" ->
+               let file = Format.sprintf "%s.flambda.v0.features" prefixname in
                let oc = open_out_bin file in
                output_value oc !Feature_extractor.mined_features;
                close_out oc
+             | Some _ -> ()
            in
            (* ===== END OF FYP HACK ==== *)
 
