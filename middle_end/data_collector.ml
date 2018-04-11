@@ -608,7 +608,15 @@ module V1 = struct
       | Apply apply_id -> apply_id
     ;;
 
+    (* TODO(fyq14): This _assumes_ that the tree does not contain any stubs. *)
     let find_in_tree =
+      let remove_stub_components path =
+        List.filter (fun (_cu, a) ->
+            match a with
+            | Apply_id.Stub -> false
+            | _ -> true)
+          path
+      in
       let try_to_match (trace_item : Trace_item.t) (node : node) =
         match (node, trace_item) with
         | (Decl decl, Enter_decl enter_decl) ->
@@ -625,7 +633,8 @@ module V1 = struct
             Compilation_unit.equal cu_a cu_b &&
             (Apply_id.compare_stamp s_a s_b = 0)
           in
-          check_prefix ~equal ~prefix:reference_path call_site_path
+          check_prefix ~equal ~prefix:(remove_stub_components reference_path)
+            (remove_stub_components call_site_path)
 
         | _, _ -> false
       in
@@ -673,7 +682,17 @@ module V1 = struct
       in
       fun tree query ->
         (* Query uses [list] as a stack *)
-        find ~subtree:tree (List.rev query.trace)
+        let trace =
+          List.filter (fun item ->
+              match item with
+              | Trace_item.Enter_decl _ -> true
+              | Trace_item.At_call_site acs ->
+                match acs.apply_id.stamp with
+                | Apply_id.Stub -> false
+                | _ -> true)
+            query.trace
+        in
+        find ~subtree:tree (List.rev trace)
     ;;
 
     let print_node ppf node =
