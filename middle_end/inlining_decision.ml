@@ -90,6 +90,19 @@ let extract_features
     | Call_site.At_call_site { applied = current ; _ } :: _ ->
       Closure_id.equal closure_id current
   in
+  let module DC = Data_collector in
+  let trace =
+    let trace =
+      List.map (fun trace_item ->
+          match trace_item with
+          | DC.Trace_item.Enter_decl decl ->
+              Feature_extractor.Decl decl.declared.closure_origin
+          | DC.Trace_item.At_call_site acs ->
+              Feature_extractor.Apply acs.apply_id)
+        (E.inlining_trace env)
+    in
+    List.rev (Feature_extractor.Apply apply_id :: trace)
+  in
   let call_context_stack = E.call_context_stack env in
   let original_bound_vars = hd_opt (E.original_bound_vars_stack env) in
   let flambda_round = E.round env in
@@ -113,7 +126,7 @@ let extract_features
       ~flambda_round
       ~flambda_wsb
       ~closure_depth:(E.closure_depth env)
-      ~apply_id
+      ~trace
       ~only_use_of_function
   in
   let init =
