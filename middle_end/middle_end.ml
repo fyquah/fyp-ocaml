@@ -203,42 +203,19 @@ let middle_end ppf ~prefixname ~backend
            (* dump_function_sizes flam ~backend; *)
 
            (* ===== FYP HACK : Feature extraction ==== *)
-           let data_collection_path =
-             Printf.sprintf "%s/fyp/data-collected" (Sys.getenv "HOME")
+           let () =
+             match !Clflags.dump_features with
+             | None -> ()
+             | Some file ->
+               let file =
+                 match file with 
+                 | "" -> Format.sprintf "%s.flambda.features" prefixname
+                 | _ -> file
+               in
+               let oc = open_out_bin file in
+               output_value oc !Feature_extractor.mined_features;
+               close_out oc
            in
-           let should_save =
-             try Sys.is_directory data_collection_path with
-             | Sys_error _ -> false
-           in
-           if should_save then begin
-             let directory =
-               match !Clflags.dump_features with
-               | None ->
-                 let cwd = Sys.getcwd () in
-                 let output_dir =
-                   Printf.sprintf "%s/%s" data_collection_path cwd
-                 in
-                 let exit_code =
-                   let d =
-                     match List.rev (String.split_on_char '/' prefixname) with
-                     | _ :: tl -> String.concat "/" (List.rev tl)
-                     | [] -> ""
-                   in
-                   let d = Printf.sprintf "%s/%s" output_dir d in
-                   Sys.command (Printf.sprintf "mkdir -p %s" d)
-                 in
-                 assert (exit_code = 0);
-                 output_dir
-               | Some directory -> directory
-             in
-             let file =
-               Printf.sprintf "%s/%s.flambda.features" directory prefixname
-             in
-             let oc = open_out_bin file in
-             output_value oc !Feature_extractor.mined_features;
-             close_out oc
-           end;
            (* ===== END OF FYP HACK ==== *)
 
-           flam))
-      )
+           flam)))
