@@ -584,7 +584,13 @@ module V1 = struct
 
     let build_tree (decisions : Decision.t list) =
       let init = [] in
-      List.fold_left add init decisions
+      List.filter (fun (decision : Decision.t) ->
+          match decision.action with
+          | Action.Specialise -> false
+          | Action.Inline -> true
+          | Action.Apply -> true)
+        decisions
+      |> List.fold_left add init
       |> recursively_reverse
     ;;
 
