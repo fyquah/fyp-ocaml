@@ -682,7 +682,8 @@ module V1 = struct
               else if List.length forward_path < List.length trace_item_path then
                 find ~subtree query
               else
-                assert false
+                (* assert false *)
+                None
             end
           end
       in
