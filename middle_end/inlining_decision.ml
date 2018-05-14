@@ -407,42 +407,23 @@ let inline env r ~apply_id ~kind ~call_site ~lhs_of_application
       | Don't_try_it No_useful_approximations -> true
       | Try_it -> true
     in
-    if E.round env = 0 then
-      if (!Clflags.exhaustive_inlining
-            && inlining_definitely_terminates ()
-            && E.at_toplevel env) then
-        Some Data_collector.Action.Inline
-      else
-        let v0_query =
-          { Data_collector.V0.Query. call_stack; applied;  }
-        in
-        let v1_query = { Data_collector.V1.Overrides. trace; apply_id; } in
-        (*
-        Format.eprintf "apply_id = %a | " Apply_id.print apply_id;
-        List.iter
-          (fun item -> Format.eprintf "%a :: " Data_collector.V1.Trace_item.pprint item )
-          trace;
-        Format.eprintf "\n";
-        *)
-        let query = (v0_query, v1_query) in
-        let ret =
-          Data_collector.Multiversion_overrides.find_decision (E.overrides env) query
-        in
-        (*
-        begin match ret with
-        | None -> Format.eprintf "CANNOT FIND OVERRIDE - USING FLAMBDA HEURISTICS\n"
-        | Some found ->
-            let action =
-              match found with
-              | Data_collector.Action.Inline -> "INLINE"
-              | Apply -> "APPLY"
-            in
-            Format.eprintf "FOUND OVERRIDE TO %s\n" action
-        end;
-        *)
-        ret
+    if (!Clflags.exhaustive_inlining
+          && inlining_definitely_terminates ()
+          && E.at_toplevel env) then
+      Some Data_collector.Action.Inline
     else
-      None
+      let v0_query =
+        { Data_collector.V0.Query. call_stack; applied;  }
+      in
+      let v1_query =
+        let round = E.round env in
+        { Data_collector.V1.Overrides. trace; apply_id; round }
+      in
+      let query = (v0_query, v1_query) in
+      let ret =
+        Data_collector.Multiversion_overrides.find_decision (E.overrides env) query
+      in
+      ret
   in
   let always_inline =
     match found with
