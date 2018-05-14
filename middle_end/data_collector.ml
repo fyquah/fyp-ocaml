@@ -356,6 +356,7 @@ module V1 = struct
     type t = Decision.t list
 
     type query = {
+      round : int;
       trace: Trace_item.t list;
       apply_id: Apply_id.t;
     }
@@ -379,11 +380,12 @@ module V1 = struct
       | Action.Specialise -> "SPECIALISE"
     ;;
 
-    let find_decision overrides ({ trace; apply_id; }) =
+    let find_decision overrides ({ trace; apply_id; round; }) =
       match
         List.find_opt (fun (decision : Decision.t) ->
             Apply_id.equal_accounting_deprecation decision.apply_id apply_id
-            && Helper.list_equal Trace_item.minimally_equal decision.trace trace)
+            && Helper.list_equal Trace_item.minimally_equal decision.trace trace
+            && (decision.round < 0 || decision.round = round))
           overrides
       with
       | None ->
