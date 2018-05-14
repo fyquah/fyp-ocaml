@@ -242,6 +242,14 @@ let extract_features
   !state
 ;;
 
+let (custom_heuristic : (Feature_extractor.t -> Data_collector.Action.t option) option ref)
+  = ref None
+;;
+
+let setup_custom_heuristic f =
+  custom_heuristic := Some f
+;;
+
 let inline env r ~apply_id ~kind ~call_site ~lhs_of_application
     ~(function_decls : Flambda.function_declarations)
     ~closure_id_being_applied ~(function_decl : Flambda.function_declaration)
@@ -425,21 +433,7 @@ let inline env r ~apply_id ~kind ~call_site ~lhs_of_application
       in
       ret
   in
-  let always_inline =
-    match found with
-    | Some Data_collector.Action.Inline -> true
-    | Some Data_collector.Action.Specialise
-    | Some Apply
-    | None -> always_inline
-  in
-  let try_inlining =
-    match found with
-    | Some Data_collector.Action.Inline -> Try_it
-    | Some Apply -> Don't_try_it S.Not_inlined.Override
-    | Some Data_collector.Action.Specialise
-    | None -> try_inlining
-  in
-  let base_features =
+  let features =
     let size_before_simplify =
       Inlining_cost.lambda_size function_decl.body
     in
@@ -465,14 +459,50 @@ let inline env r ~apply_id ~kind ~call_site ~lhs_of_application
       W.to_feature_extractor_wsb whether_sufficient_benefit
     in
     let closure_id = closure_id_being_applied in
-    extract_features ~kind ~closure_id ~env ~function_decl
-      ~size_before_simplify ~size_after_simplify:size_before_simplify
-      ~value_set_of_closures ~flambda_tries:false ~flambda_wsb ~apply_id
-      ~only_use_of_function
+    let body, _r_inlined =
+      (* First we construct the code that would result from copying the body of
+         the function, without doing any further inlining upon it, to the call
+         site. *)
+      Inlining_transforms.inline_by_copying_function_body ~env
+        ~call_site_apply_id:apply_id
+        ~r:(R.reset_benefit r) ~function_decls ~lhs_of_application
+        ~closure_id_being_applied ~specialise_requested ~inline_requested
+        ~function_decl ~args ~dbg ~simplify
+    in
+    let size_after_simplify = Inlining_cost.lambda_size body in
+    let base_features =
+      extract_features ~kind ~closure_id ~env ~function_decl
+        ~size_before_simplify ~size_after_simplify:size_before_simplify
+        ~value_set_of_closures ~flambda_tries:false ~flambda_wsb ~apply_id
+        ~only_use_of_function
+    in
+    { base_features with size_after_simplify }
+  in
+  let found =
+    match found with
+    | Some _ -> found
+    | None ->
+      match !custom_heuristic with
+      | None -> None
+      | Some f -> f features
+  in
+  let always_inline =
+    match found with
+    | Some Data_collector.Action.Inline -> true
+    | Some Data_collector.Action.Specialise
+    | Some Apply
+    | None -> always_inline
+  in
+  let try_inlining =
+    match found with
+    | Some Data_collector.Action.Inline -> Try_it
+    | Some Apply -> Don't_try_it S.Not_inlined.Override
+    | Some Data_collector.Action.Specialise
+    | None -> try_inlining
   in
   begin match try_inlining with
   | Don't_try_it decision ->
-    (base_features, Original decision)
+    (features, Original decision)
   | Try_it ->
     let r =
       R.set_inlining_threshold r (Some remaining_inlining_threshold)
@@ -486,10 +516,6 @@ let inline env r ~apply_id ~kind ~call_site ~lhs_of_application
         ~r:(R.reset_benefit r) ~function_decls ~lhs_of_application
         ~closure_id_being_applied ~specialise_requested ~inline_requested
         ~function_decl ~args ~dbg ~simplify
-    in
-    let size_after_simplify = Inlining_cost.lambda_size body in
-    let features =
-      { base_features with size_after_simplify }
     in
     let num_direct_applications_seen =
       (R.num_direct_applications r_inlined) - (R.num_direct_applications r)

@@ -169,6 +169,7 @@ let unsafe_string =
 let classic_inlining = ref false       (* -Oclassic *)
 let inlining_report = ref false    (* -inlining-report *)
 let exhaustive_inlining = ref false  (* -exhaustive-inlining *)
+let (custom_inlining_heuristic : string option ref) = ref None (* -custom-inlining-heuristic *)
 
 let afl_instrument = ref Config.afl_instrument (* -afl-instrument *)
 let afl_inst_ratio = ref 100           (* -afl-inst-ratio *)

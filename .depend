@@ -1354,9 +1354,15 @@ middle_end/extract_projections.cmx : middle_end/base_types/variable.cmx \
 middle_end/extract_projections.cmi : middle_end/base_types/variable.cmi \
     middle_end/projection.cmi middle_end/inline_and_simplify_aux.cmi \
     middle_end/flambda.cmi
-middle_end/feature_extractor.cmo : middle_end/feature_extractor.cmi
-middle_end/feature_extractor.cmx : middle_end/feature_extractor.cmi
-middle_end/feature_extractor.cmi :
+middle_end/feature_extractor.cmo : sexp/sexp.cmi \
+    middle_end/base_types/closure_origin.cmi \
+    middle_end/base_types/apply_id.cmi middle_end/feature_extractor.cmi
+middle_end/feature_extractor.cmx : sexp/sexp.cmx \
+    middle_end/base_types/closure_origin.cmx \
+    middle_end/base_types/apply_id.cmx middle_end/feature_extractor.cmi
+middle_end/feature_extractor.cmi : sexp/sexp.cmi \
+    middle_end/base_types/closure_origin.cmi \
+    middle_end/base_types/apply_id.cmi
 middle_end/find_recursive_functions.cmo : middle_end/base_types/variable.cmi \
     utils/strongly_connected_components.cmi middle_end/flambda_utils.cmi \
     middle_end/flambda.cmi middle_end/find_recursive_functions.cmi
@@ -1629,7 +1635,8 @@ middle_end/inlining_decision.cmo : middle_end/base_types/variable.cmi \
     middle_end/flambda.cmi middle_end/find_recursive_functions.cmi \
     middle_end/feature_extractor.cmi middle_end/data_collector.cmi \
     middle_end/base_types/closure_id.cmi utils/clflags.cmi \
-    middle_end/base_types/call_site.cmi middle_end/inlining_decision.cmi
+    middle_end/base_types/call_site.cmi middle_end/base_types/apply_id.cmi \
+    middle_end/inlining_decision.cmi
 middle_end/inlining_decision.cmx : middle_end/base_types/variable.cmx \
     middle_end/base_types/var_within_closure.cmx \
     middle_end/base_types/symbol.cmx middle_end/simple_value_approx.cmx \
@@ -1640,12 +1647,14 @@ middle_end/inlining_decision.cmx : middle_end/base_types/variable.cmx \
     middle_end/flambda.cmx middle_end/find_recursive_functions.cmx \
     middle_end/feature_extractor.cmx middle_end/data_collector.cmx \
     middle_end/base_types/closure_id.cmx utils/clflags.cmx \
-    middle_end/base_types/call_site.cmx middle_end/inlining_decision.cmi
+    middle_end/base_types/call_site.cmx middle_end/base_types/apply_id.cmx \
+    middle_end/inlining_decision.cmi
 middle_end/inlining_decision.cmi : middle_end/base_types/variable.cmi \
     middle_end/simple_value_approx.cmi bytecomp/lambda.cmi \
     middle_end/inlining_decision_intf.cmi \
     middle_end/inline_and_simplify_aux.cmi middle_end/flambda.cmi \
-    middle_end/debuginfo.cmi middle_end/base_types/closure_id.cmi \
+    middle_end/feature_extractor.cmi middle_end/debuginfo.cmi \
+    middle_end/data_collector.cmi middle_end/base_types/closure_id.cmi \
     middle_end/base_types/apply_id.cmi
 middle_end/inlining_decision_intf.cmi : middle_end/base_types/variable.cmi \
     middle_end/simple_value_approx.cmi middle_end/inline_and_simplify_aux.cmi \

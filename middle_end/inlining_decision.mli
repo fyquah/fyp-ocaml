@@ -43,3 +43,5 @@ val for_call_site
     may be subject to inlining immediately, thus changing the declaration.
     This function must return [true] for that to be able to happen. *)
 val should_inline_inside_declaration : Flambda.function_declaration -> bool
+
+val setup_custom_heuristic : (Feature_extractor.t -> Data_collector.Action.t option) -> unit

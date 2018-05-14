@@ -70,6 +70,7 @@ module Options = Main_args.Make_bytecomp_options (struct
   let _perf_profile s = perf_profile := Some s
   let _dump_features s = dump_features := Some s
   let _inlining_overrides s = inlining_overrides := Some s
+  let _custom_inlining_heuristic s = custom_inlining_heuristic := Some s
   let _opaque = set opaque
   let _open s = open_modules := s :: !open_modules
   let _output_obj () = output_c_object := true; custom_runtime := true

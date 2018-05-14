@@ -105,6 +105,7 @@ module Options = Main_args.Make_optcomp_options (struct
   let _no_unbox_specialised_args = option "-no-unbox-specialised-args"
   let _o s = option_with_arg "-o" s
   let _inlining_overrides s = option_with_arg "-inlining-overrides" s
+  let _custom_inlining_heuristic s = option_with_arg "-custom-inlining-heuristic" s
   let _perf_profile s = option_with_arg "-perf-profile" s
   let _dump_features s = option_with_arg "-dump-features" s
   let _o2 = option "-O2"

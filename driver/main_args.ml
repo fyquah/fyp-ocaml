@@ -371,6 +371,11 @@ let mk_inlining_overrides f =
   to <file>"
 ;;
 
+let mk_custom_inlining_heuristics f =
+  "-custom-inlining-heuristic", Arg.String f, "<file> Set custom inlining heuristic \
+  to <file>"
+;;
+
 let mk_open f =
   "-open", Arg.String f, "<module>  Opens the module <module> before typing"
 
@@ -860,6 +865,7 @@ module type Compiler_options = sig
   val _perf_profile : string -> unit
   val _dump_features : string -> unit
   val _inlining_overrides : string -> unit
+  val _custom_inlining_heuristic : string -> unit
   val _opaque :  unit -> unit
   val _output_obj : unit -> unit
   val _output_complete_obj : unit -> unit
@@ -1066,6 +1072,7 @@ struct
     mk_perf_profile F._perf_profile;
     mk_dump_features F._dump_features;
     mk_inlining_overrides F._inlining_overrides;
+    mk_custom_inlining_heuristics F._custom_inlining_heuristic;
     mk_opaque F._opaque;
     mk_open F._open;
     mk_output_obj F._output_obj;
@@ -1236,6 +1243,7 @@ struct
     mk_perf_profile F._perf_profile;
     mk_dump_features F._dump_features;
     mk_inlining_overrides F._inlining_overrides;
+    mk_custom_inlining_heuristics F._custom_inlining_heuristic;
     mk_o2 F._o2;
     mk_o3 F._o3;
     mk_opaque F._opaque;

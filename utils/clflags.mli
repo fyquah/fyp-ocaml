@@ -205,6 +205,7 @@ val classic_inlining : bool ref
 val afl_instrument : bool ref
 val afl_inst_ratio : int ref
 val exhaustive_inlining : bool ref
+val custom_inlining_heuristic : string option ref
 
 val all_passes : string list ref
 val dumped_pass : string -> bool

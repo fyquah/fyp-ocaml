@@ -135,6 +135,7 @@ module Options = Main_args.Make_optcomp_options (struct
   let _perf_profile s = perf_profile := Some s
   let _dump_features s = dump_features := Some s
   let _inlining_overrides s = inlining_overrides := Some s
+  let _custom_inlining_heuristic s = custom_inlining_heuristic := Some s
   let _o s = output_name := Some s
   (* CR-someday mshinwell: should stop e.g. -O2 -classic-inlining
      lgesbert: could be done in main() below, like for -pack and -c, but that

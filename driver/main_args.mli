@@ -83,6 +83,7 @@ module type Compiler_options = sig
   val _perf_profile : string -> unit
   val _dump_features : string -> unit
   val _inlining_overrides : string -> unit
+  val _custom_inlining_heuristic : string -> unit
   val _opaque :  unit -> unit
   val _output_obj : unit -> unit
   val _output_complete_obj : unit -> unit
