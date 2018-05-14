@@ -249,6 +249,14 @@ end);;
 
 let main () =
   native_code := true;
+  begin match !Clflags.custom_inlining_heuristic with
+  | None -> ()
+  | Some filename ->
+    let allowed_modules = [] in
+    let f = Compiler_dynlink.run_module filename allowed_modules in
+    Inlining_decision.setup_custom_heuristic f;
+    Format.eprintf "Loaded custom inlining heuristic from %s\n" filename
+  end;
   let list = ref Options.list in
   begin
     try

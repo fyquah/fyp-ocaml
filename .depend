@@ -2254,16 +2254,18 @@ driver/opterrors.cmi :
 driver/optmain.cmo : utils/warnings.cmi utils/profile.cmi asmcomp/proc.cmi \
     asmcomp/printmach.cmi driver/optcompile.cmi utils/misc.cmi \
     driver/makedepend.cmi driver/main_args.cmi parsing/location.cmi \
-    asmcomp/import_approx.cmi utils/config.cmi driver/compplugin.cmi \
-    driver/compmisc.cmi asmcomp/compilenv.cmi driver/compenv.cmi \
+    middle_end/inlining_decision.cmi asmcomp/import_approx.cmi \
+    utils/config.cmi driver/compplugin.cmi driver/compmisc.cmi \
+    speciallibs/compiler_dynlink.cmi asmcomp/compilenv.cmi driver/compenv.cmi \
     utils/clflags.cmi middle_end/backend_intf.cmi asmcomp/asmpackager.cmi \
     asmcomp/asmlink.cmi asmcomp/asmlibrarian.cmi asmcomp/arch.cmo \
     driver/optmain.cmi
 driver/optmain.cmx : utils/warnings.cmx utils/profile.cmx asmcomp/proc.cmx \
     asmcomp/printmach.cmx driver/optcompile.cmx utils/misc.cmx \
     driver/makedepend.cmx driver/main_args.cmx parsing/location.cmx \
-    asmcomp/import_approx.cmx utils/config.cmx driver/compplugin.cmx \
-    driver/compmisc.cmx asmcomp/compilenv.cmx driver/compenv.cmx \
+    middle_end/inlining_decision.cmx asmcomp/import_approx.cmx \
+    utils/config.cmx driver/compplugin.cmx driver/compmisc.cmx \
+    speciallibs/compiler_dynlink.cmi asmcomp/compilenv.cmx driver/compenv.cmx \
     utils/clflags.cmx middle_end/backend_intf.cmi asmcomp/asmpackager.cmx \
     asmcomp/asmlink.cmx asmcomp/asmlibrarian.cmx asmcomp/arch.cmx \
     driver/optmain.cmi
@@ -2339,13 +2341,15 @@ toplevel/opttoploop.cmi : utils/warnings.cmi typing/types.cmi \
     parsing/longident.cmi parsing/location.cmi typing/env.cmi
 toplevel/opttopmain.cmo : utils/warnings.cmi asmcomp/printmach.cmi \
     toplevel/opttoploop.cmi toplevel/opttopdirs.cmi utils/misc.cmi \
-    driver/main_args.cmi parsing/location.cmi utils/config.cmi \
-    driver/compmisc.cmi driver/compenv.cmi utils/clflags.cmi \
+    driver/main_args.cmi parsing/location.cmi \
+    middle_end/inlining_decision.cmi utils/config.cmi driver/compmisc.cmi \
+    speciallibs/compiler_dynlink.cmi driver/compenv.cmi utils/clflags.cmi \
     toplevel/opttopmain.cmi
 toplevel/opttopmain.cmx : utils/warnings.cmx asmcomp/printmach.cmx \
     toplevel/opttoploop.cmx toplevel/opttopdirs.cmx utils/misc.cmx \
-    driver/main_args.cmx parsing/location.cmx utils/config.cmx \
-    driver/compmisc.cmx driver/compenv.cmx utils/clflags.cmx \
+    driver/main_args.cmx parsing/location.cmx \
+    middle_end/inlining_decision.cmx utils/config.cmx driver/compmisc.cmx \
+    speciallibs/compiler_dynlink.cmi driver/compenv.cmx utils/clflags.cmx \
     toplevel/opttopmain.cmi
 toplevel/opttopmain.cmi :
 toplevel/opttopstart.cmo : toplevel/opttopmain.cmi

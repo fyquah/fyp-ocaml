@@ -275,6 +275,14 @@ let main () =
                       compile_only; output_c_object]) > 1
     then
       fatal "Please specify at most one of -pack, -a, -shared, -c, -output-obj";
+
+    begin match !Clflags.custom_inlining_heuristic with
+    | None -> ()
+    | Some filename ->
+      let f = Compiler_dynlink.run_module filename [] in
+      Inlining_decision.setup_custom_heuristic f
+    end;
+
     if !make_archive then begin
       Compmisc.init_path true;
       let target = extract_output !output_name in

@@ -52,12 +52,12 @@ CAMLRUN ?= boot/ocamlrun
 CAMLYACC ?= boot/ocamlyacc
 include stdlib/StdlibModules
 
-CAMLC=$(CAMLRUN) boot/ocamlc -g -nostdlib -I boot -use-prims byterun/primitives
+CAMLC=$(CAMLRUN) boot/ocamlc -g -nostdlib -I boot -use-prims byterun/primitives -I otherlibs/dynlink
 CAMLOPT=$(CAMLRUN) ./ocamlopt -g -nostdlib -I stdlib -I otherlibs/dynlink
 ARCHES=amd64 i386 arm arm64 power s390x
 INCLUDES=-I utils -I parsing -I typing -I bytecomp -I middle_end \
         -I middle_end/base_types -I asmcomp -I asmcomp/debug \
-        -I driver -I toplevel -I sexp
+        -I driver -I toplevel -I sexp -I speciallibs
 
 COMPFLAGS=-strict-sequence -principal -absname -w +a-4-9-41-42-44-45-48 \
 	  -warn-error A \
@@ -792,6 +792,19 @@ ocamlc: compilerlibs/ocamlcommon.cma compilerlibs/ocamlbytecomp.cma $(BYTESTART)
 partialclean::
 	rm -rf ocamlc
 
+# Special-libs, only available in the native code compiler. It has a
+# different implementation for [ocamlopt] and [ocamlopt.opt]
+
+speciallibs/compiler_dynlink.cmi: speciallibs/compiler_dynlink.mli
+	$(CAMLC) $(COMPFLAGS) -c $^
+
+speciallibs/byte/compiler_dynlink.cmo: speciallibs/byte/compiler_dynlink.ml utils/misc.cmi speciallibs/compiler_dynlink.cmi 
+	$(CAMLC)  $(COMPFLAGS) -I speciallibs -I utils -c $<
+
+speciallibs/byte/compiler_dynlink.cmx: speciallibs/opt/compiler_dynlink.ml utils/misc.cmi speciallibs/compiler_dynlink.cmi 
+	$(CAMLOPT)  $(COMPFLAGS) -I speciallibs -I utils -c %<
+
+
 # The native-code compiler
 
 compilerlibs/ocamloptcomp.cma: $(MIDDLE_END) $(ASMCOMP)
@@ -801,7 +814,7 @@ partialclean::
 	rm -f compilerlibs/ocamloptcomp.cma
 
 ocamlopt: compilerlibs/ocamlcommon.cma compilerlibs/ocamloptcomp.cma \
-          $(OPTSTART)
+          speciallibs/byte/compiler_dynlink.cmo $(OPTSTART) 
 	$(CAMLC) $(LINKFLAGS) -o $@ $^
 
 partialclean::
@@ -912,7 +925,9 @@ partialclean::
 	rm -f compilerlibs/ocamloptcomp.cmxa compilerlibs/ocamloptcomp.$(A)
 
 ocamlopt.opt: compilerlibs/ocamlcommon.cmxa compilerlibs/ocamloptcomp.cmxa \
-              $(OPTSTART:.cmo=.cmx)
+              $(OPTSTART:.cmo=.cmx) \
+	      speciallibs/byte/compiler_dynlink.cmx \
+	      otherlibs/dynlink/dynlink.cmxa
 	$(CAMLOPT) $(LINKFLAGS) -o $@ $^
 
 partialclean::
