@@ -57,7 +57,7 @@ CAMLOPT=$(CAMLRUN) ./ocamlopt -g -nostdlib -I stdlib -I otherlibs/dynlink
 ARCHES=amd64 i386 arm arm64 power s390x
 INCLUDES=-I utils -I parsing -I typing -I bytecomp -I middle_end \
         -I middle_end/base_types -I asmcomp -I asmcomp/debug \
-        -I driver -I toplevel -I sexp -I speciallibs
+        -I driver -I toplevel -I sexp -I speciallibs -I speciallibs/opt
 
 COMPFLAGS=-strict-sequence -principal -absname -w +a-4-9-41-42-44-45-48 \
 	  -warn-error A \
@@ -801,7 +801,7 @@ speciallibs/compiler_dynlink.cmi: speciallibs/compiler_dynlink.mli
 speciallibs/byte/compiler_dynlink.cmo: speciallibs/byte/compiler_dynlink.ml utils/misc.cmi speciallibs/compiler_dynlink.cmi 
 	$(CAMLC)  $(COMPFLAGS) -I speciallibs -I utils -c $<
 
-speciallibs/byte/compiler_dynlink.cmx: speciallibs/opt/compiler_dynlink.ml utils/misc.cmi speciallibs/compiler_dynlink.cmi 
+speciallibs/opt/compiler_dynlink.cmx: speciallibs/opt/compiler_dynlink.ml utils/misc.cmi speciallibs/compiler_dynlink.cmi 
 	$(CAMLOPT)  $(COMPFLAGS) -I speciallibs -I utils -c $<
 
 
@@ -925,9 +925,9 @@ partialclean::
 	rm -f compilerlibs/ocamloptcomp.cmxa compilerlibs/ocamloptcomp.$(A)
 
 ocamlopt.opt: compilerlibs/ocamlcommon.cmxa compilerlibs/ocamloptcomp.cmxa \
-              $(OPTSTART:.cmo=.cmx) \
-	      speciallibs/byte/compiler_dynlink.cmx \
-	      otherlibs/dynlink/dynlink.cmxa
+	      otherlibs/dynlink/dynlink.cmxa \
+	      speciallibs/opt/compiler_dynlink.cmx \
+              $(OPTSTART:.cmo=.cmx)
 	$(CAMLOPT) $(LINKFLAGS) -o $@ $^
 
 partialclean::
