@@ -802,7 +802,7 @@ speciallibs/byte/compiler_dynlink.cmo: speciallibs/byte/compiler_dynlink.ml util
 	$(CAMLC)  $(COMPFLAGS) -I speciallibs -I utils -c $<
 
 speciallibs/byte/compiler_dynlink.cmx: speciallibs/opt/compiler_dynlink.ml utils/misc.cmi speciallibs/compiler_dynlink.cmi 
-	$(CAMLOPT)  $(COMPFLAGS) -I speciallibs -I utils -c %<
+	$(CAMLOPT)  $(COMPFLAGS) -I speciallibs -I utils -c $<
 
 
 # The native-code compiler
