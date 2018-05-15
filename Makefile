@@ -246,6 +246,7 @@ MIDDLE_END=\
   middle_end/inlining_stats_types.cmo \
   middle_end/inlining_stats.cmo \
   middle_end/inline_and_simplify_aux.cmo \
+  middle_end/inlining_query.cmo \
   middle_end/remove_free_vars_equal_to_args.cmo \
   middle_end/extract_projections.cmo \
   middle_end/augment_specialised_args.cmo \
