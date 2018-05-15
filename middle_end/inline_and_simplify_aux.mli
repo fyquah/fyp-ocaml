@@ -37,6 +37,8 @@ module Env : sig
     -> overrides: Data_collector.Multiversion_overrides.t
     -> t
 
+  val to_serialisable_form : t -> Inlining_query.env
+
   val bump_offset : t -> t
 
   val next_call_site_offset : t -> (Call_site.Offset.t * t)
@@ -311,7 +313,13 @@ module Result : sig
   (** Result structures approximately follow the evaluation order of the
       program.  They are returned by the simplification algorithm acting on
       an Flambda subexpression. *)
-  type t
+  type t = Inlining_query.result =
+    { approx : Simple_value_approx.t;
+      used_static_exceptions : Static_exception.Set.t;
+      inlining_threshold : Inlining_cost.Threshold.t option;
+      benefit : Inlining_cost.Benefit.t;
+      num_direct_applications : int;
+    }
 
   val create : unit -> t
 

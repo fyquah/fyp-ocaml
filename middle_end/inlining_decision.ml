@@ -228,30 +228,40 @@ let inline env r ~apply_id ~kind ~call_site ~lhs_of_application
       ret
   in
   let inlining_query =
+    let body_after_inlining, r_inlined =
+      (* First we construct the code that would result from copying the body of
+         the function, without doing any further inlining upon it, to the call
+         site. *)
+      Inlining_transforms.inline_by_copying_function_body ~env
+        ~call_site_apply_id:apply_id
+        ~r:(R.reset_benefit r) ~function_decls ~lhs_of_application
+        ~closure_id_being_applied ~specialise_requested ~inline_requested
+        ~function_decl ~args ~dbg ~simplify
+    in
+    let wsb =
+      W.create ~original body_after_inlining
+        ~toplevel:(E.at_toplevel env)
+        ~branch_depth:(E.branch_depth env)
+        ~lifting:function_decl.Flambda.is_a_functor
+        ~round:(E.round env)
+        ~benefit:(R.benefit r_inlined)
+      |> W.to_feature_extractor_wsb
+    in
     let inlined_result =
-      let body, r =
-        (* First we construct the code that would result from copying the body of
-           the function, without doing any further inlining upon it, to the call
-           site. *)
-        Inlining_transforms.inline_by_copying_function_body ~env
-          ~call_site_apply_id:apply_id
-          ~r:(R.reset_benefit r) ~function_decls ~lhs_of_application
-          ~closure_id_being_applied ~specialise_requested ~inline_requested
-          ~function_decl ~args ~dbg ~simplify
-      in
-      { Inlining_query. r; body; }
+      { Inlining_query. r = Obj.magic r_inlined; body = body_after_inlining; }
     in
     { Inlining_query.
       function_decl;
       closure_id_being_applied;
-      env;
-      r;
+      env = E.to_serialisable_form env;
+      r = Obj.magic r;
       apply_id;
       original;
       call_kind = kind;
       value_set_of_closures;
       only_use_of_function;
       inlined_result;
+      wsb;
     }
   in
   let custom_decision =

@@ -1,27 +1,65 @@
 [@@@ocaml.warning "+a-4-9-30-40-41-42"]
 
-module E = Inline_and_simplify_aux.Env
-module W = Inlining_cost.Whether_sufficient_benefit
-module R = Inline_and_simplify_aux.Result
+module DC = Data_collector
 
 type scope = Current | Outer
 
+type result = {
+    approx : Simple_value_approx.t;
+    used_static_exceptions : Static_exception.Set.t;
+    inlining_threshold : Inlining_cost.Threshold.t option;
+    benefit : Inlining_cost.Benefit.t;
+    num_direct_applications : int;
+  }
+
+type env = {
+    round : int;
+    approx : (scope * Simple_value_approx.t) Variable.Map.t;
+    approx_mutable : Simple_value_approx.t Mutable_variable.Map.t;
+    approx_sym : Simple_value_approx.t Symbol.Map.t;
+    projections : Variable.t Projection.Map.t;
+    current_closure : DC.Function_metadata.t option;
+    current_functions : Set_of_closures_origin.Set.t;
+    (* The functions currently being declared: used to avoid inlining
+       recursively *)
+    inlining_stack: (Call_site.t * DC.Trace_item.t) list;
+    inlining_level : int;
+    (* Number of times "inline" has been called recursively *)
+    inside_branch : int;
+    freshening : Freshening.t;
+    never_inline : bool ;
+    never_inline_inside_closures : bool;
+    never_inline_outside_closures : bool;
+    unroll_counts : int Set_of_closures_origin.Map.t;
+    inlining_counts : int Closure_origin.Map.t;
+    actively_unrolling : int Set_of_closures_origin.Map.t;
+    closure_depth : int;
+    inlining_stats_closure_stack : Inlining_stats.Closure_stack.t;
+    inlined_debuginfo : Debuginfo.t;
+
+    (* For feature extraction *)
+    call_context_stack: Feature_extractor.call_context list;
+    original_function_size_stack : int list;  (* Note : doesn't include size of inlined stuff *)
+    original_bound_vars_stack : int list;
+  }
+
 type inlined_result =
-  { r                        : Inline_and_simplify_aux.Result.t;
+  { r                        : result;
     body                     : Flambda.t;
   }
 
 type query =
   { function_decl            : Flambda.function_declaration;
     closure_id_being_applied : Closure_id.t;
-    env                      : Inline_and_simplify_aux.Env.t;
-    r                        : Inline_and_simplify_aux.Result.t;
+    env                      : env;
+    r                        : result;
     apply_id                 : Apply_id.t;
     original                 : Flambda.t;
     inlined_result           : inlined_result;
     call_kind                : Flambda.call_kind;
     value_set_of_closures    : Simple_value_approx.value_set_of_closures;
     only_use_of_function     : bool;
+    wsb                      : Feature_extractor.wsb;
   }
 
 let hd_opt a =
@@ -46,7 +84,7 @@ let rec find_substring haystack needle =
 let extract_features 
     ~(kind : Flambda.call_kind)
     ~(closure_id : Closure_id.t)
-    ~(env : E.t)
+    ~(env : env)
     ~(function_decl : Flambda.function_declaration)
     ~(value_set_of_closures: Simple_value_approx.value_set_of_closures)
     ~(size_before_simplify : int)
@@ -68,16 +106,16 @@ let extract_features
   in
   let in_recursive_function =
     match
-      E.actively_unrolling env function_decls.set_of_closures_origin
+      Set_of_closures_origin.Map.find_opt
+        function_decls.set_of_closures_origin
+        env.actively_unrolling
     with
     | None -> false
     | Some _ -> true
   in
-  let original_function_size =
-    hd_opt (E.original_function_size_stack env)
-  in
+  let original_function_size = hd_opt env.original_function_size_stack in
   let recursive_call =
-    match E.inlining_stack env with
+    match List.map fst env.inlining_stack with
     | [] -> false
     | Call_site.Enter_decl { closure = current; _ } :: _
     | Call_site.At_call_site { applied = current ; _ } :: _ ->
@@ -92,13 +130,13 @@ let extract_features
               Feature_extractor.Decl decl.declared.closure_origin
           | DC.Trace_item.At_call_site acs ->
               Feature_extractor.Apply acs.apply_id)
-        (E.inlining_trace env)
+        (List.map snd env.inlining_stack)
     in
     List.rev (Feature_extractor.Apply apply_id :: trace)
   in
-  let call_context_stack = E.call_context_stack env in
-  let original_bound_vars = hd_opt (E.original_bound_vars_stack env) in
-  let flambda_round = E.round env in
+  let call_context_stack = env.call_context_stack in
+  let original_bound_vars = hd_opt (env.original_bound_vars_stack) in
+  let flambda_round = env.round in
   let params = function_decl.params in
   let init =
     Feature_extractor.empty
@@ -112,13 +150,13 @@ let extract_features
       ~call_context_stack
       ~direct_call
       ~recursive_call
-      ~inlining_depth:(E.inlining_level env)
+      ~inlining_depth:env.inlining_level
       ~in_recursive_function
       ~original_function_size
       ~original_bound_vars
       ~flambda_round
       ~flambda_wsb
-      ~closure_depth:(E.closure_depth env)
+      ~closure_depth:env.closure_depth
       ~trace
       ~only_use_of_function
   in
@@ -237,31 +275,18 @@ let extract_features
 
 let extract_v0_features query =
   let {
-    original;
+    original = _;
     function_decl;
     env;
-    r = _;
     apply_id;
     inlined_result;
     closure_id_being_applied;
     call_kind = kind;
     value_set_of_closures;
     only_use_of_function;
+    wsb = flambda_wsb;
   } = query in
-  let size_before_simplify =
-    Inlining_cost.lambda_size function_decl.body
-  in
-  let flambda_wsb =
-    let whether_sufficient_benefit =
-      W.create ~original inlined_result.body
-        ~toplevel:(E.at_toplevel env)
-        ~branch_depth:(E.branch_depth env)
-        ~lifting:function_decl.Flambda.is_a_functor
-        ~round:(E.round env)
-        ~benefit:(R.benefit inlined_result.r)
-    in
-    W.to_feature_extractor_wsb whether_sufficient_benefit
-  in
+  let size_before_simplify = Inlining_cost.lambda_size function_decl.body in
   let closure_id = closure_id_being_applied in
   let base_features =
     extract_features ~kind ~closure_id ~env ~function_decl

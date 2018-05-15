@@ -19,7 +19,7 @@
 module DC = Data_collector
 
 module Env = struct
-  type scope = Current | Outer
+  type scope = Inlining_query.scope = Current | Outer
 
   type t = {
     backend : (module Backend_intf.S);
@@ -92,6 +92,34 @@ module Env = struct
       original_bound_vars_stack = [];
       overrides;
     }
+
+  let to_serialisable_form t =
+    { Inlining_query.
+      round = t.round;
+      approx = t.approx;
+      approx_mutable = t.approx_mutable;
+      approx_sym = t.approx_sym;
+      projections = t.projections;
+      current_closure = t.current_closure;
+      current_functions = t.current_functions;
+      inlining_level = t.inlining_level;
+      inlining_stack = t.inlining_stack;
+      inside_branch = t.inside_branch;
+      freshening = t.freshening;
+      never_inline = t.never_inline;
+      never_inline_inside_closures = t.never_inline_inside_closures;
+      never_inline_outside_closures = t.never_inline_outside_closures;
+      unroll_counts = t.unroll_counts;
+      inlining_counts = t.inlining_counts;
+      actively_unrolling = t.actively_unrolling;
+      closure_depth = t.closure_depth;
+      inlining_stats_closure_stack = t.inlining_stats_closure_stack;
+      inlined_debuginfo = t.inlined_debuginfo;
+      call_context_stack = t.call_context_stack;
+      original_function_size_stack = t.original_function_size_stack;
+      original_bound_vars_stack = t.original_bound_vars_stack;
+    }
+  ;;
 
   let inlining_stack t = List.map fst t.inlining_stack
   let inlining_trace t = List.map snd t.inlining_stack
@@ -537,7 +565,7 @@ let initial_inlining_toplevel_threshold ~round : Inlining_cost.Threshold.t =
     (unscaled * Inlining_cost.scale_inline_threshold_by)
 
 module Result = struct
-  type t =
+  type t = Inlining_query.result =
     { approx : Simple_value_approx.t;
       used_static_exceptions : Static_exception.Set.t;
       inlining_threshold : Inlining_cost.Threshold.t option;
