@@ -465,7 +465,7 @@ let specialise env r ~lhs_of_application ~apply_id
       (List.for_all2
          (fun id approx ->
             not ((A.useful approx)
-                 && Variable.Map.mem id (Lazy.force invariant_params)))
+                 && Variable.Map.mem id invariant_params))
          (Parameter.List.vars function_decl.params) args_approxs)
   in
   let always_specialise, never_specialise =
@@ -510,7 +510,7 @@ let specialise env r ~lhs_of_application ~apply_id
       Don't_try_it S.Not_specialised.Not_closed
     else if not (Lazy.force recursive) then
       Don't_try_it S.Not_specialised.Not_recursive
-    else if Variable.Map.is_empty (Lazy.force invariant_params) then
+    else if Variable.Map.is_empty (invariant_params) then
       Don't_try_it S.Not_specialised.No_invariant_parameters
     else if Lazy.force has_no_useful_approxes then
       Don't_try_it S.Not_specialised.No_useful_approximations
@@ -527,7 +527,7 @@ let specialise env r ~lhs_of_application ~apply_id
           ~r:(R.reset_benefit r) ~lhs_of_application
           ~function_decls ~closure_id_being_applied ~apply_id
           ~function_decl ~args ~args_approxs
-          ~invariant_params:value_set_of_closures.invariant_params
+          ~invariant_params:(lazy value_set_of_closures.invariant_params)
           ~specialised_args:value_set_of_closures.specialised_args
           ~direct_call_surrogates:value_set_of_closures.direct_call_surrogates
           ~dbg ~simplify ~inline_requested
@@ -803,7 +803,7 @@ let for_call_site
           (* If we didn't specialise then try inlining *)
           let size_from_approximation =
             match
-              Variable.Map.find fun_var (Lazy.force value_set_of_closures.size)
+              Variable.Map.find fun_var (value_set_of_closures.size)
             with
             | size -> size
             | exception Not_found ->

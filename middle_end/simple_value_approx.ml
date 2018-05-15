@@ -69,8 +69,8 @@ and value_closure = {
 and value_set_of_closures = {
   function_decls : Flambda.function_declarations;
   bound_vars : t Var_within_closure.Map.t;
-  invariant_params : Variable.Set.t Variable.Map.t lazy_t;
-  size : int option Variable.Map.t lazy_t;
+  invariant_params : Variable.Set.t Variable.Map.t;
+  size : int option Variable.Map.t;
   specialised_args : Flambda.specialised_to Variable.Map.t;
   freshening : Freshening.Project_var.t;
   direct_call_surrogates : Closure_id.t Closure_id.Map.t;
@@ -91,7 +91,7 @@ let print_value_set_of_closures ppf
       { function_decls = { funs }; invariant_params; freshening; _ } =
   Format.fprintf ppf "(set_of_closures:@ %a invariant_params=%a freshening=%a)"
     (fun ppf -> Variable.Map.iter (fun id _ -> Variable.print ppf id)) funs
-    (Variable.Map.print Variable.Set.print) (Lazy.force invariant_params)
+    (Variable.Map.print Variable.Set.print) (invariant_params)
     Freshening.Project_var.print freshening
 
 let print_unresolved_value ppf = function
@@ -240,7 +240,6 @@ let create_value_set_of_closures
       ~invariant_params ~specialised_args ~freshening
       ~direct_call_surrogates =
   let size =
-    lazy (
       let functions = Variable.Map.keys function_decls.funs in
       Variable.Map.map (fun (function_decl : Flambda.function_declaration) ->
           let params = Parameter.Set.vars function_decl.params in
@@ -255,11 +254,11 @@ let create_value_set_of_closures
               num_free_vars
           in
           Inlining_cost.lambda_smaller' function_decl.body ~than:max_size)
-        function_decls.funs)
+        function_decls.funs
   in
   { function_decls;
     bound_vars;
-    invariant_params;
+    invariant_params = Lazy.force invariant_params;
     size;
     specialised_args;
     freshening;
