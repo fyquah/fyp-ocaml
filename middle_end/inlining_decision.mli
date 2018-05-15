@@ -67,6 +67,8 @@ val for_call_site
     This function must return [true] for that to be able to happen. *)
 val should_inline_inside_declaration : Flambda.function_declaration -> bool
 
+val collected_queries : Inlining_query.query list ref
+
 val init_custom_heuristic
    : (Inlining_query.query -> Data_collector.Action.t option)
   -> unit

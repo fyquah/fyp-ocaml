@@ -204,14 +204,54 @@ let middle_end ppf ~prefixname ~backend
 
            (* ===== FYP HACK : Feature extraction ==== *)
            let () =
-             match !Clflags.dump_features with
-             | None -> ()
-             | Some "V0" ->
-               let file = Format.sprintf "%s.flambda.v0.features" prefixname in
+             let dump ~suffix value =
+               let file = Format.sprintf "%s.%s" prefixname suffix in
                let oc = open_out_bin file in
-               output_value oc !Feature_extractor.mined_features;
+               output_value oc value;
                close_out oc
+             in
+             begin match !Clflags.dump_features with
+             | Some "V0" ->
+               dump ~suffix:"flambda.v0.features" !Feature_extractor.mined_features;
+               dump ~suffix:"flambda.v0.queries" !Inlining_decision.collected_queries
+             | Some "Q" ->
+               dump ~suffix:"flambda.v0.queries" !Inlining_decision.collected_queries
+             | None
              | Some _ -> ()
+             end;
+
+             begin match Sys.getenv "OCAML_MINE_QUERIES" with
+             | ""
+             | "0" -> ()
+             | _ ->
+               begin
+                 let data_collection_path =
+                   Printf.sprintf "%s/fyp/data-mining/raw-queries" (Sys.getenv "HOME")
+                 in
+                 let output_dir =
+                   let cwd = Sys.getcwd () in
+                   Printf.sprintf "%s/%s" data_collection_path cwd
+                 in
+                 let exit_code =
+                   let d =
+                     match List.rev (String.split_on_char '/' prefixname) with
+                     | _ :: tl -> String.concat "/" (List.rev tl)
+                     | [] -> ""
+                   in
+                   let d = Printf.sprintf "%s/%s" output_dir d in
+                   Sys.command (Printf.sprintf "mkdir -p %s" d)
+                 in
+                 assert (exit_code = 0);
+
+                 let filename =
+                   Printf.sprintf "%s/%s.flambda.v0.queries"
+                     output_dir prefixname
+                 in
+                 let oc = open_out_bin filename in
+                 output_value oc !Inlining_decision.collected_queries;
+                 close_out oc
+               end
+             end
            in
            (* ===== END OF FYP HACK ==== *)
 

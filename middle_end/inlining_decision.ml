@@ -303,6 +303,8 @@ module Inlining_query = struct
   ;;
 end
 
+let collected_queries = ref []
+
 let (custom_heuristic : (Inlining_query.query -> Data_collector.Action.t option) option ref) =
   ref None
 ;;
@@ -522,7 +524,6 @@ let inline env r ~apply_id ~kind ~call_site ~lhs_of_application
       inlined_result;
     }
   in
-  let v0_features = Inlining_query.extract_v0_features inlining_query in
   let custom_decision =
     match !custom_heuristic with
     | None -> None
@@ -560,7 +561,7 @@ let inline env r ~apply_id ~kind ~call_site ~lhs_of_application
   in
   begin match try_inlining with
   | Don't_try_it decision ->
-    (v0_features, Original decision)
+    (inlining_query, Original decision)
   | Try_it ->
     let r =
       R.set_inlining_threshold r (Some remaining_inlining_threshold)
@@ -612,7 +613,7 @@ let inline env r ~apply_id ~kind ~call_site ~lhs_of_application
         then env
         else E.inlining_level_up env
       in
-      (v0_features, Changed ((simplify env r body), decision))
+      (inlining_query, Changed ((simplify env r body), decision))
     in
     if always_inline then
       keep_inlined_version S.Inlined.Annotation
@@ -635,7 +636,7 @@ let inline env r ~apply_id ~kind ~call_site ~lhs_of_application
          first.  We try that next, unless it is known that there were
          no direct applications in the simplified body computed above, meaning
          no opportunities for inlining. *)
-        (v0_features, Original (S.Not_inlined.Without_subfunctions wsb))
+        (inlining_query, Original (S.Not_inlined.Without_subfunctions wsb))
       end else begin
         let env = E.inlining_level_up env in
         let env = E.note_entering_inlined env call_site in
@@ -661,7 +662,7 @@ let inline env r ~apply_id ~kind ~call_site ~lhs_of_application
           let decision =
             S.Inlined.With_subfunctions (wsb, wsb_with_subfunctions)
           in
-          (v0_features, Changed (res, decision))
+          (inlining_query, Changed (res, decision))
         end
         else begin
           (* r_inlined contains an approximation that may be invalid for the
@@ -673,15 +674,19 @@ let inline env r ~apply_id ~kind ~call_site ~lhs_of_application
           let decision =
             S.Not_inlined.With_subfunctions (wsb, wsb_with_subfunctions)
           in
-          (v0_features, Original decision)
+          (inlining_query, Original decision)
         end
       end
     end
   end
-  |> (fun (v0_features, ret) ->
+  |> (fun (inlining_query, ret) ->
+      let v0_features = Inlining_query.extract_v0_features inlining_query in
       Feature_extractor.mined_features :=
         v0_features :: !Feature_extractor.mined_features;
-        ret)
+      collected_queries := inlining_query :: !collected_queries;
+      ret
+    
+    )
 
 let specialise env r ~lhs_of_application ~apply_id
       ~(function_decls : Flambda.function_declarations)
