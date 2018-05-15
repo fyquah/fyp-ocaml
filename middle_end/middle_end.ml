@@ -220,9 +220,15 @@ let middle_end ppf ~prefixname ~backend
              | Some _ -> ()
              end;
 
-             begin match Sys.getenv "OCAML_MINE_QUERIES" with
-             | ""
-             | "0" -> ()
+             begin match
+               try
+                Some (Sys.getenv "OCAML_MINE_QUERIES")
+               with
+               | Not_found -> None
+             with
+             | None
+             | Some ""
+             | Some "0" -> ()
              | _ ->
                begin
                  let data_collection_path =
