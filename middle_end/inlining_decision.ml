@@ -256,6 +256,7 @@ let inline env r ~apply_id ~kind ~call_site ~lhs_of_application
       env = E.to_serialisable_form env;
       r = Obj.magic r;
       apply_id;
+      args;
       original;
       call_kind = kind;
       value_set_of_closures;
