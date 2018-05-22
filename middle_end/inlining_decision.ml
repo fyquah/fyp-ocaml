@@ -41,6 +41,7 @@ let (custom_heuristic : (Inlining_query.query -> Data_collector.Action.t option)
 
 let init_custom_heuristic f =
   Format.printf "Loading custom inlining heuristic!\n";
+  Format.eprintf "Loading custom inlining heuristic!\n";
   custom_heuristic := Some f
 ;;
 
