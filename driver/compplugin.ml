@@ -35,7 +35,11 @@ let load plugin_name =
   in
 
   if not (Hashtbl.mem plugins plugin_file) then begin
-    Compdynlink.loadfile plugin_file;
+    begin try
+      Compdynlink.loadfile plugin_file
+    with
+    | Compdynlink.Error _ -> ()
+    end;
     Hashtbl.add plugins plugin_file (); (* plugin loaded *)
   end
 
