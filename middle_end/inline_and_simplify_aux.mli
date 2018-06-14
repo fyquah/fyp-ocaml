@@ -218,11 +218,11 @@ module Env : sig
 
   (** Whether it is permissible to inline a call to a function in the given
       environment. *)
-  val inlining_allowed : t -> Closure_origin.t -> bool
+  val inlining_allowed : t -> Closure_id.t -> bool
 
   (** Whether the given environment is currently being used to rewrite the
       body of an inlined function. *)
-  val inside_inlined_function : t -> Closure_origin.t -> t
+  val inside_inlined_function : t -> Closure_id.t -> t
 
   val inside_inlined_stub
      : t
