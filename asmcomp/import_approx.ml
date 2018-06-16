@@ -49,7 +49,8 @@ let import_set_of_closures =
             ~inline:function_decl.inline
             ~specialise:function_decl.specialise
             ~is_a_functor:function_decl.is_a_functor
-            ~closure_origin:function_decl.closure_origin)
+            ~closure_origin:function_decl.closure_origin
+            ~real_closure_origin:function_decl.real_closure_origin)
         clos.funs
     in
     Flambda.update_function_declarations clos ~funs

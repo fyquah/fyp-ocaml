@@ -118,8 +118,8 @@ and function_declarations = {
 }
 
 and function_declaration = {
-  real_closure_origin: Real_closure_origin.t;
   closure_origin: Closure_origin.t;
+  real_closure_origin: Real_closure_origin.t;
   params : Parameter.t list;
   body : t;
   free_variables : Variable.Set.t;

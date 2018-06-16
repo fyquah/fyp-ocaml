@@ -403,7 +403,7 @@ module Env = struct
   let inside_inlined_function t applied  =
     let inlining_count =
       try
-        Closure_id.Map.find applied t.inlining_counts
+        Real_closure_origin.Map.find applied t.inlining_counts
       with Not_found ->
         max 1 (Clflags.Int_arg_helper.get
                  ~key:t.round !Clflags.inline_max_unroll)

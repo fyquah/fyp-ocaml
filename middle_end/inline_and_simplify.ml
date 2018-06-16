@@ -1498,7 +1498,7 @@ and duplicate_function ~env ~(set_of_closures : Flambda.set_of_closures)
       ~inline:function_decl.inline ~specialise:function_decl.specialise
       ~is_a_functor:function_decl.is_a_functor
       ~closure_origin:(function_decl.closure_origin)
-      ~real_closure_origin:(Real_closure_origin.wrap (Closure_id.wrap new_fun_var))
+      ~real_closure_origin:(Real_closure_origin.create (Closure_id.wrap new_fun_var))
   in
   function_decl, specialised_args
 

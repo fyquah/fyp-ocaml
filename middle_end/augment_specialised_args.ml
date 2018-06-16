@@ -622,7 +622,7 @@ module Make (T : S) = struct
       in
       let closure_origin = function_decl.closure_origin in
       let real_closure_origin =
-        Closure_origin.create (Real_closure_id.wrap new_fun_var)
+        Real_closure_origin.create (Closure_id.wrap new_fun_var)
       in
       let rewritten_function_decl =
         Flambda.create_function_declaration
