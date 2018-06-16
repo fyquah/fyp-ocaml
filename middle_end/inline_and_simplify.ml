@@ -801,8 +801,10 @@ and simplify_apply env r ~(apply : Flambda.apply) : Flambda.t * R.t =
             let round = E.round env in
             { DC.Decision. round; trace; apply_id; action; metadata; }
           in
-          DC.Decision.recorded_from_flambda :=
-            create_datum DC.Action.Apply :: !DC.Decision.recorded_from_flambda;
+          if !Clflags.inlining_report && E.round env = 0 then begin
+            DC.Decision.recorded_from_flambda :=
+              create_datum DC.Action.Apply :: !DC.Decision.recorded_from_flambda;
+          end;
           Apply ({ func = lhs_of_application; args; kind = Indirect; dbg;
               apply_id;
               inline = inline_requested; specialise = specialise_requested; }),

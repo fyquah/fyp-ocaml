@@ -839,7 +839,7 @@ let for_call_site
 
             Changed (res, D.Inlined (spec_reason, inl_reason))
           | Original inl_reason ->
-            if E.round env = 0 then begin
+            if E.round env = 0  && !Clflags.inlining_report then begin
               DC.Decision.recorded_from_flambda :=
                 create_datum DC.Action.Apply :: !DC.Decision.recorded_from_flambda;
               DC.V0.inlining_decisions :=
