@@ -35,7 +35,7 @@ type 'b good_idea =
 
 let collected_queries = ref []
 
-let (custom_heuristic : (Inlining_query.query -> Data_collector.Action.t option) option ref) =
+let (custom_heuristic : (Inlining_query.query lazy_t -> Data_collector.Action.t option) option ref) =
   ref None
 ;;
 
@@ -269,12 +269,9 @@ let inline env r ~apply_id ~kind ~call_site ~lhs_of_application
     )
   in
   let custom_decision =
-    if E.round env = 0 then begin
-      match !custom_heuristic with
-      | None -> None
-      | Some f -> f (Lazy.force inlining_query)
-    end else
-      None
+    match !custom_heuristic with
+    | None -> None
+    | Some f -> f inlining_query
   in
   let always_inline =
     let true_if_inline x =
@@ -426,16 +423,7 @@ let inline env r ~apply_id ~kind ~call_site ~lhs_of_application
       end
     end
   end
-  |> (fun (inlining_query, ret) ->
-      if E.round env = 0 then begin
-        let v0_features = Inlining_query.extract_v0_features (Lazy.force inlining_query) in
-        Feature_extractor.mined_features :=
-          v0_features :: !Feature_extractor.mined_features;
-        collected_queries := (Lazy.force inlining_query) :: !collected_queries;
-      end;
-      ret
-    
-    )
+  |> (fun (_inlining_query, ret) -> ret) 
 
 let specialise env r ~lhs_of_application ~apply_id
       ~(function_decls : Flambda.function_declarations)
@@ -474,7 +462,7 @@ let specialise env r ~lhs_of_application ~apply_id
       (List.for_all2
          (fun id approx ->
             not ((A.useful approx)
-                 && Variable.Map.mem id invariant_params))
+                 && Variable.Map.mem id (Lazy.force invariant_params)))
          (Parameter.List.vars function_decl.params) args_approxs)
   in
   let always_specialise, never_specialise =
@@ -519,7 +507,7 @@ let specialise env r ~lhs_of_application ~apply_id
       Don't_try_it S.Not_specialised.Not_closed
     else if not (Lazy.force recursive) then
       Don't_try_it S.Not_specialised.Not_recursive
-    else if Variable.Map.is_empty (invariant_params) then
+    else if Variable.Map.is_empty (Lazy.force invariant_params) then
       Don't_try_it S.Not_specialised.No_invariant_parameters
     else if Lazy.force has_no_useful_approxes then
       Don't_try_it S.Not_specialised.No_useful_approximations
@@ -536,7 +524,7 @@ let specialise env r ~lhs_of_application ~apply_id
           ~r:(R.reset_benefit r) ~lhs_of_application
           ~function_decls ~closure_id_being_applied ~apply_id
           ~function_decl ~args ~args_approxs
-          ~invariant_params:(lazy value_set_of_closures.invariant_params)
+          ~invariant_params:value_set_of_closures.invariant_params
           ~specialised_args:value_set_of_closures.specialised_args
           ~direct_call_surrogates:value_set_of_closures.direct_call_surrogates
           ~dbg ~simplify ~inline_requested
@@ -812,7 +800,7 @@ let for_call_site
           (* If we didn't specialise then try inlining *)
           let size_from_approximation =
             match
-              Variable.Map.find fun_var (value_set_of_closures.size)
+              Variable.Map.find fun_var (Lazy.force value_set_of_closures.size)
             with
             | size -> size
             | exception Not_found ->

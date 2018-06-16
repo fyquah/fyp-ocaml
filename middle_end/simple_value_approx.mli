@@ -148,8 +148,8 @@ and value_closure = {
 and value_set_of_closures = private {
   function_decls : Flambda.function_declarations;
   bound_vars : t Var_within_closure.Map.t;
-  invariant_params : Variable.Set.t Variable.Map.t;
-  size : int option Variable.Map.t;
+  invariant_params : Variable.Set.t Variable.Map.t Lazy.t;
+  size : int option Variable.Map.t Lazy.t;
   (** For functions that are very likely to be inlined, the size of the
       function's body. *)
   specialised_args : Flambda.specialised_to Variable.Map.t;
