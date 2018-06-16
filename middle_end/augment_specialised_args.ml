@@ -544,6 +544,7 @@ module Make (T : S) = struct
         ~specialise:Default_specialise
         ~is_a_functor:false
         ~closure_origin:function_decl.closure_origin
+        ~real_closure_origin:function_decl.real_closure_origin
     in
     new_fun_var, new_function_decl, rewritten_existing_specialised_args,
       benefit
@@ -620,6 +621,9 @@ module Make (T : S) = struct
         function_decl.params @ new_params
       in
       let closure_origin = function_decl.closure_origin in
+      let real_closure_origin =
+        Closure_origin.create (Real_closure_id.wrap new_fun_var)
+      in
       let rewritten_function_decl =
         Flambda.create_function_declaration
           ~params:all_params
@@ -630,6 +634,7 @@ module Make (T : S) = struct
           ~specialise:function_decl.specialise
           ~is_a_functor:function_decl.is_a_functor
           ~closure_origin
+          ~real_closure_origin
       in
       let funs, direct_call_surrogates =
         if for_one_function.make_direct_call_surrogates then

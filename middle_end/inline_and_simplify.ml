@@ -640,6 +640,7 @@ and simplify_set_of_closures original_env r
         ~inline ~specialise:function_decl.specialise
         ~is_a_functor:function_decl.is_a_functor
         ~closure_origin:function_decl.closure_origin
+        ~real_closure_origin:function_decl.real_closure_origin
     in
     let used_params' = Flambda.used_params function_decl in
     Variable.Map.add fun_var function_decl funs,
@@ -1445,7 +1446,7 @@ and simplify_list env r l =
     else h' :: t', approxs, r
 
 and duplicate_function ~env ~(set_of_closures : Flambda.set_of_closures)
-      ~fun_var ~new_fun_var:_ =
+      ~fun_var ~new_fun_var =
   let function_decl =
     match Variable.Map.find fun_var set_of_closures.function_decls.funs with
     | exception Not_found ->
@@ -1497,6 +1498,7 @@ and duplicate_function ~env ~(set_of_closures : Flambda.set_of_closures)
       ~inline:function_decl.inline ~specialise:function_decl.specialise
       ~is_a_functor:function_decl.is_a_functor
       ~closure_origin:(function_decl.closure_origin)
+      ~real_closure_origin:(Real_closure_origin.wrap (Closure_id.wrap new_fun_var))
   in
   function_decl, specialised_args
 

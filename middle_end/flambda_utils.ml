@@ -340,6 +340,7 @@ let make_closure_declaration ~closure_origin ~id ~body ~params ~stub : Flambda.t
       ~body ~stub ~dbg:Debuginfo.none ~inline:Default_inline
       ~specialise:Default_specialise ~is_a_functor:false
       ~closure_origin
+      ~real_closure_origin:(Closure_origin.create (Real_closure_id.wrap id))
   in
   assert (Variable.Set.equal (Variable.Set.map subst free_variables)
     function_declaration.free_variables);
