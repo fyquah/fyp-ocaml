@@ -835,17 +835,21 @@ let for_call_site
           in
           match inline_result with
           | Changed (res, inl_reason) ->
-            DC.Decision.recorded_from_flambda :=
-              create_datum DC.Action.Inline :: !DC.Decision.recorded_from_flambda;
-            DC.V0.inlining_decisions :=
-              create_v0_datum false :: !DC.V0.inlining_decisions;
+            if E.round env = 0 then begin
+              DC.Decision.recorded_from_flambda :=
+                create_datum DC.Action.Inline :: !DC.Decision.recorded_from_flambda;
+              DC.V0.inlining_decisions :=
+                create_v0_datum false :: !DC.V0.inlining_decisions
+            end;
 
             Changed (res, D.Inlined (spec_reason, inl_reason))
           | Original inl_reason ->
-            DC.Decision.recorded_from_flambda :=
-              create_datum DC.Action.Apply :: !DC.Decision.recorded_from_flambda;
-            DC.V0.inlining_decisions :=
-              create_v0_datum true :: !DC.V0.inlining_decisions;
+            if E.round env = 0 then begin
+              DC.Decision.recorded_from_flambda :=
+                create_datum DC.Action.Apply :: !DC.Decision.recorded_from_flambda;
+              DC.V0.inlining_decisions :=
+                create_v0_datum true :: !DC.V0.inlining_decisions
+            end;
 
             Original (D.Unchanged (spec_reason, inl_reason))
       end
