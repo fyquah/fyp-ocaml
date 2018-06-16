@@ -229,6 +229,7 @@ let inline env r ~apply_id ~kind ~call_site ~lhs_of_application
       ret
   in
   let inlining_query =
+    lazy (
     let body_after_inlining, r_inlined =
       (* First we construct the code that would result from copying the body of
          the function, without doing any further inlining upon it, to the call
@@ -265,11 +266,15 @@ let inline env r ~apply_id ~kind ~call_site ~lhs_of_application
       inlined_result;
       wsb;
     }
+    )
   in
   let custom_decision =
-    match !custom_heuristic with
-    | None -> None
-    | Some f -> f inlining_query
+    if E.round env = 0 then begin
+      match !custom_heuristic with
+      | None -> None
+      | Some f -> f (Lazy.force inlining_query)
+    end else
+      None
   in
   let always_inline =
     let true_if_inline x =
@@ -422,10 +427,12 @@ let inline env r ~apply_id ~kind ~call_site ~lhs_of_application
     end
   end
   |> (fun (inlining_query, ret) ->
-      let v0_features = Inlining_query.extract_v0_features inlining_query in
-      Feature_extractor.mined_features :=
-        v0_features :: !Feature_extractor.mined_features;
-      collected_queries := inlining_query :: !collected_queries;
+      if E.round env = 0 then begin
+        let v0_features = Inlining_query.extract_v0_features (Lazy.force inlining_query) in
+        Feature_extractor.mined_features :=
+          v0_features :: !Feature_extractor.mined_features;
+        collected_queries := (Lazy.force inlining_query) :: !collected_queries;
+      end;
       ret
     
     )

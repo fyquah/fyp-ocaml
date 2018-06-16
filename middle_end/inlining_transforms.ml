@@ -183,11 +183,15 @@ let inline_by_copying_function_body ~env ~r
   let env = E.set_inline_debuginfo ~dbg env in
   let env = E.bump_offset env in
   let expr =
-    let f_t = function
+    let f_t x = 
+      match x with
       | Flambda.Apply apply ->
         let caller = call_site_apply_id in
-        let apply_id = Apply_id.inline ~caller ~inlined:apply.apply_id in
-        Flambda.Apply { apply with apply_id }
+        if E.round env = 0 then
+          let apply_id = Apply_id.inline ~caller ~inlined:apply.apply_id in
+          Flambda.Apply { apply with apply_id }
+        else (* Sacrifice round-inlining invariance due to memory limitations ... *)
+          x
       | otherwise -> otherwise
     in
     let f_named = fun x -> x in
