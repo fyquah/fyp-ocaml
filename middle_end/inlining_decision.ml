@@ -35,7 +35,7 @@ type 'b good_idea =
 
 let collected_queries = ref []
 
-let (custom_heuristic : (Inlining_query.query lazy_t -> Data_collector.Action.t option) option ref) =
+let (custom_heuristic : (Inline_and_simplify_aux.Env.t -> Inlining_query.query lazy_t -> Data_collector.Action.t option) option ref) =
   ref None
 ;;
 
@@ -271,7 +271,7 @@ let inline env r ~apply_id ~kind ~call_site ~lhs_of_application
   let custom_decision =
     match !custom_heuristic with
     | None -> None
-    | Some f -> f inlining_query
+    | Some f -> f env inlining_query
   in
   let always_inline =
     let true_if_inline x =

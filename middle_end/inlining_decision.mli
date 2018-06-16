@@ -47,5 +47,5 @@ val should_inline_inside_declaration : Flambda.function_declaration -> bool
 val collected_queries : Inlining_query.query list ref
 
 val init_custom_heuristic
-   : (Inlining_query.query lazy_t -> Data_collector.Action.t option)
+   : (Inline_and_simplify_aux.Env.t -> Inlining_query.query lazy_t -> Data_collector.Action.t option)
   -> unit
