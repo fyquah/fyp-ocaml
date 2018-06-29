@@ -426,3 +426,4 @@ type switch_branch_selection =
 (** Check that the branch is compatible with the approximation *)
 val potentially_taken_const_switch_branch : t -> int -> switch_branch_selection
 val potentially_taken_block_switch_branch : t -> int -> switch_branch_selection
+val realise : t -> unit

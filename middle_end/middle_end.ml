@@ -210,11 +210,14 @@ let middle_end ppf ~prefixname ~backend
                output_value oc value;
                close_out oc
              in
+             let realise_queries l = List.iter Inlining_query.realise l in
              begin match !Clflags.dump_features with
              | Some "V0" ->
                dump ~suffix:"flambda.v0.features" !Feature_extractor.mined_features;
+               realise_queries !Inlining_decision.collected_queries;
                dump ~suffix:"flambda.v0.queries" !Inlining_decision.collected_queries
              | Some "Q" ->
+               realise_queries !Inlining_decision.collected_queries;
                dump ~suffix:"flambda.v0.queries" !Inlining_decision.collected_queries
              | None
              | Some _ -> ()

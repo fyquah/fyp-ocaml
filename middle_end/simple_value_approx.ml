@@ -858,3 +858,14 @@ let potentially_taken_block_switch_branch t tag =
     Cannot_be_taken
   | Value_bottom ->
     Cannot_be_taken
+
+let rec realise t =
+  match t.descr with
+  | Value_closure value_closure ->
+    realise value_closure.set_of_closures
+
+  | Value_set_of_closures value_set_of_closures ->
+    ignore (Lazy.force value_set_of_closures.invariant_params);
+    ignore (Lazy.force value_set_of_closures.size)
+  | _ -> ()
+;

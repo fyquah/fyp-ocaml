@@ -423,7 +423,13 @@ let inline env r ~apply_id ~kind ~call_site ~lhs_of_application
       end
     end
   end
-  |> (fun (_inlining_query, ret) -> ret) 
+  |> (fun (inlining_query, ret) ->
+      if E.round env = 0 then begin
+        let query = Lazy.force inlining_query in
+        Inlining_query.realise query;
+        collected_queries := query :: !collected_queries;
+      end;
+      ret)
 
 let specialise env r ~lhs_of_application ~apply_id
       ~(function_decls : Flambda.function_declarations)
